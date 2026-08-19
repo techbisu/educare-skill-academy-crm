@@ -1,0 +1,2414 @@
+Educare Skill Academy — Full CRM Development Prompt
+
+1. Project Overview
+
+Build a production-ready, multi-office CRM and business management platform for Educare Skill Academy.
+
+Educare Skill Academy provides:
+
+1. Professional course coaching/training
+2. Diploma/B.Tech/ITI-related coaching
+3. Internship services
+4. College/university admission assistance
+5. Career counselling
+6. Job placement assistance
+7. Company/job matching
+8. Student payment and EMI management
+
+The CRM must manage the complete customer lifecycle:
+
+LEAD
+→ CALLING
+→ COUNSELLING
+→ APPOINTMENT
+→ ENROLLMENT
+→ PAYMENT / EMI
+→ COURSE
+→ BATCH
+→ TRAINING / COACHING
+→ JOB ELIGIBILITY
+→ JOB MATCHING
+→ INTERVIEW
+→ SELECTION
+→ OFFER
+→ JOINING
+→ PLACEMENT COMPLETED
+→ FOLLOW-UP
+→ ACCOUNTS / FINANCE
+
+College admission is a parallel business workflow:
+
+LEAD
+→ COUNSELLING
+→ COLLEGE / COURSE SELECTION
+→ APPLICATION
+→ ADMISSION
+→ PAYMENT
+→ SEMESTER PAYMENT
+→ ADMISSION COMPLETED
+
+The system must be designed as a modular, scalable CRM, not as a simple CRUD application.
+
+---
+
+2. Primary Objectives
+
+The application must allow management to:
+
+- Capture every lead
+- Assign leads to callers/counsellors
+- Track every call
+- Schedule follow-ups
+- Manage appointments
+- Conduct counselling
+- Convert leads into students
+- Enroll students into courses
+- Manage batches and trainers
+- Track attendance/training
+- Collect payments
+- Manage EMI schedules
+- Manage college admission cases
+- Manage companies and job vacancies
+- Manage job applications
+- Track interviews
+- Track offers and joining
+- Track placement
+- Calculate employee targets
+- Calculate incentives
+- Manage expenses
+- Generate invoices
+- Generate reports
+- Maintain complete audit history
+- Restrict data by office and role
+
+---
+
+3. Recommended Technology Stack
+
+Use a modern production-ready stack.
+
+Frontend
+
+- React 19
+- TypeScript
+- Vite
+- React Router
+- TanStack Query v5
+- React Hook Form
+- Zod
+- Tailwind CSS
+- shadcn/ui
+- Hugeicons
+- Recharts or equivalent chart library
+- date-fns
+
+Use a compact professional enterprise CRM design.
+
+Do NOT create random UI components repeatedly.
+
+Create reusable components:
+
+- DataTable
+- Search
+- Filters
+- Pagination
+- Modal
+- Drawer
+- Form
+- Select
+- Combobox
+- DatePicker
+- FileUploader
+- StatusBadge
+- KPI Card
+- ActivityTimeline
+- EmptyState
+- LoadingState
+- ErrorState
+- PermissionGuard
+- ConfirmDialog
+- Toast
+- Tabs
+- DetailPanel
+
+---
+
+4. Backend
+
+Preferred:
+
+- Laravel 12
+- PHP 8.3+
+- PostgreSQL
+- Redis
+- Laravel Queue
+- Laravel Scheduler
+- Laravel Notifications
+- Laravel Filesystem
+
+API architecture must be RESTful and modular.
+
+Use:
+
+/api/v1/...
+
+Use Form Requests for validation.
+
+Use API Resources/DTOs where appropriate.
+
+Use Policies/Permissions for authorization.
+
+Never put business logic directly inside controllers.
+
+Recommended:
+
+Controller
+    ↓
+Service
+    ↓
+Repository / Query Layer
+    ↓
+Model
+
+Where repository abstraction is unnecessary, use clean query/service classes instead of creating useless boilerplate.
+
+---
+
+5. Architecture
+
+Use a modular business architecture.
+
+Core modules:
+
+Core
+User & Authentication
+Organization / Office
+CRM
+Student
+Course
+Enrollment
+Batch & Training
+Finance
+College Admission
+Placement
+Reports
+Notification
+Audit
+Document
+Settings
+
+Each module must have clear responsibility.
+
+Do not tightly couple every feature together.
+
+---
+
+6. Authentication
+
+Implement secure authentication.
+
+Support:
+
+- Login
+- Logout
+- Forgot password
+- Reset password
+- Change password
+- Session management
+
+User profile:
+
+- Name
+- Email
+- Mobile
+- Photo
+- Employee
+- Role
+- Office
+- Status
+
+User statuses:
+
+Active
+Inactive
+Suspended
+
+---
+
+7. Organization / Office Management
+
+The company can have multiple offices.
+
+Initial offices:
+
+- Bardhaman
+- Magra
+
+The system must support unlimited future offices.
+
+Office fields:
+
+id
+office_code
+office_name
+office_type
+address
+district
+state
+phone
+email
+status
+
+Employee must belong to an office.
+
+All major CRM records should contain office ownership where applicable.
+
+Example:
+
+Lead → Office
+Student → Office
+Enrollment → Office
+Payment → Office
+Expense → Office
+Employee → Office
+
+Users should only see data permitted by their role and office.
+
+---
+
+8. Role-Based Access Control
+
+Create granular RBAC.
+
+Default roles:
+
+Super Admin
+
+Full system access.
+
+Admin
+
+Business administration.
+
+HR
+
+Employees, targets and performance.
+
+Caller / Telecaller
+
+Assigned leads, calls and follow-ups.
+
+Counsellor
+
+Leads, counselling, appointments and enrollment.
+
+Accounts
+
+Payments, invoices, EMI, expenses and finance.
+
+Placement Executive
+
+Students, companies, jobs and placements.
+
+Trainer
+
+Assigned batches, students, attendance and training.
+
+Permissions should be granular.
+
+Example:
+
+lead.view
+lead.create
+lead.edit
+lead.delete
+lead.assign
+
+payment.view
+payment.create
+payment.edit
+payment.delete
+
+placement.view
+placement.create
+placement.edit
+
+Never rely only on frontend permissions.
+
+Authorization must also be enforced on the backend.
+
+---
+
+9. Lead Management
+
+Create a unique Lead ID.
+
+Example:
+
+EDU-LEAD-000001
+
+Lead fields:
+
+lead_id
+student_name
+father_name
+mother_name
+mobile
+whatsapp
+email
+address
+district
+qualification
+passing_year
+branch_trade
+experience
+source
+lead_type
+status
+assigned_employee
+office
+created_at
+
+Lead Sources:
+
+Facebook
+YouTube
+Instagram
+WhatsApp
+Website
+Google
+Reference
+Walk-in
+Job Portal
+Other
+
+Lead Types:
+
+Job
+Coaching
+Internship
+College Admission
+Diploma
+B.Tech
+ITI
+Other
+
+Lead Status:
+
+New
+Call Pending
+Contacted
+Interested
+Follow-up
+Appointment Booked
+Appointment Completed
+Counselling Done
+Enrollment Pending
+Enrolled
+Payment Pending
+Not Interested
+Wrong Number
+Duplicate
+Lost
+Converted
+
+---
+
+10. Duplicate Lead Detection
+
+When creating a lead, check:
+
+1. Mobile number
+2. WhatsApp number
+3. Email
+
+If a potential duplicate exists, show a warning.
+
+Example:
+
+Possible existing student found.
+
+Name: Rahul Das
+Mobile: XXXXXXXX
+Previous Enrollment: B.Tech Coaching
+Current Status: Active
+
+Allow authorized users to continue only after confirmation.
+
+Never silently create duplicate records.
+
+---
+
+11. Lead Assignment
+
+Every lead must have ownership.
+
+Support:
+
+- Manual assignment
+- Reassignment
+- Bulk assignment
+
+Track assignment history.
+
+Example:
+
+Lead created
+→ Caller A assigned
+→ Caller B reassigned
+→ Counsellor C handled counselling
+
+Store:
+
+lead_id
+employee_id
+assigned_by
+assigned_at
+assignment_reason
+
+Do not overwrite historical assignment records.
+
+---
+
+12. Calling Management
+
+Every call must be recorded as an activity.
+
+Call fields:
+
+lead
+employee
+call_date
+call_time
+duration
+direction
+result
+remarks
+next_followup_date
+
+Call result:
+
+Connected
+Not Connected
+Busy
+Switched Off
+Wrong Number
+Interested
+Not Interested
+Call Later
+Appointment Fixed
+
+Later support integration with cloud telephony.
+
+---
+
+13. Lead Activity Timeline
+
+Every important action should appear in a chronological timeline.
+
+Example:
+
+19 Aug 2026 10:15
+Lead Created
+
+19 Aug 2026 10:20
+Assigned to Caller A
+
+19 Aug 2026 11:00
+Call Attempted
+
+19 Aug 2026 11:05
+Interested
+
+19 Aug 2026 11:10
+Follow-up scheduled
+
+20 Aug 2026
+Appointment booked
+
+21 Aug 2026
+Counselling completed
+
+22 Aug 2026
+Enrollment created
+
+The timeline must be immutable for audit purposes.
+
+---
+
+14. Follow-up Management
+
+Create a centralized task/follow-up engine.
+
+A follow-up can belong to:
+
+- Lead
+- Student
+- Enrollment
+- Payment
+- EMI
+- College Admission
+- Job Application
+- Interview
+- Placement
+
+Fields:
+
+task_id
+entity_type
+entity_id
+assigned_to
+due_date
+due_time
+priority
+status
+remarks
+completed_at
+next_followup_date
+
+Statuses:
+
+Pending
+Completed
+Cancelled
+Overdue
+
+Dashboard:
+
+Today's Follow-ups
+Overdue
+Upcoming
+Completed
+
+---
+
+15. Appointment Management
+
+Appointment fields:
+
+appointment_id
+lead/student
+employee
+office
+date
+time
+type
+purpose
+status
+remarks
+
+Types:
+
+Office Visit
+Online
+Phone
+Video Call
+
+Statuses:
+
+Scheduled
+Confirmed
+Completed
+Rescheduled
+Cancelled
+No Show
+
+---
+
+16. Counselling Management
+
+Counselling record:
+
+student/lead
+counsellor
+date
+current_qualification
+career_interest
+skills
+preferred_course
+preferred_location
+expected_salary
+recommendation
+remarks
+next_followup
+
+Multiple counselling sessions can exist for the same student.
+
+Do not overwrite previous counselling records.
+
+---
+
+17. Student Management
+
+A converted lead becomes a Student/Customer.
+
+Use a separate Student entity.
+
+Example:
+
+student_id
+student_code
+name
+father_name
+mother_name
+mobile
+whatsapp
+email
+dob
+gender
+address
+district
+qualification
+passing_year
+branch
+experience
+office
+status
+
+A student can have multiple services.
+
+Example:
+
+Student
+ ├── Coaching Enrollment
+ ├── Internship
+ ├── College Admission
+ └── Placement
+
+Do not assume one student can only have one enrollment.
+
+---
+
+18. Course Management
+
+Course master:
+
+course_id
+course_code
+course_name
+category
+description
+duration
+fee
+status
+
+Categories:
+
+Diploma
+B.Tech
+ITI
+Internship
+Coaching
+Other
+
+Support:
+
+Course
+→ Semester
+→ Subject
+
+Example:
+
+B.Tech
+ ├── 1st Semester
+ │    ├── Mathematics
+ │    ├── Electrical
+ │    └── Engineering Graphics
+ ├── 2nd Semester
+ └── ...
+
+---
+
+19. Enrollment Management
+
+Enrollment fields:
+
+enrollment_id
+student
+course
+semester
+batch
+enrollment_date
+counsellor
+office
+total_fee
+discount
+final_fee
+paid_amount
+due_amount
+payment_status
+status
+
+Automatically calculate:
+
+Final Fee = Total Fee - Discount
+
+Due = Final Fee - Paid
+
+Never allow frontend calculations to be the source of truth.
+
+Backend must calculate financial totals.
+
+---
+
+20. Batch Management
+
+Batch fields:
+
+batch_id
+batch_code
+course
+semester
+branch
+start_date
+end_date
+class_time
+trainer
+mode
+maximum_students
+status
+
+Modes:
+
+Offline
+Online
+Hybrid
+
+Statuses:
+
+Upcoming
+Active
+Completed
+Cancelled
+
+Show:
+
+Capacity
+Current Students
+Available Seats
+
+---
+
+21. Training / Attendance
+
+Trainer can see only assigned batches.
+
+Attendance:
+
+batch
+student
+date
+status
+remarks
+
+Status:
+
+Present
+Absent
+Late
+Leave
+
+Provide attendance reports.
+
+---
+
+22. Payment Management
+
+Every payment must have a unique receipt number.
+
+Example:
+
+EDU-RCP-000001
+
+Payment fields:
+
+payment_id
+receipt_no
+student
+enrollment
+invoice
+amount
+payment_date
+payment_mode
+reference_no
+received_by
+office
+remarks
+
+Payment methods:
+
+Cash
+UPI
+Bank Transfer
+Card
+Cheque
+Other
+
+Never allow deletion of financial transactions by normal users.
+
+Use reversal/refund/correction workflows.
+
+---
+
+23. EMI Management
+
+An enrollment may have an EMI schedule.
+
+Example:
+
+Total Fee: ₹50,000
+
+EMI 1 → ₹10,000 → Paid
+EMI 2 → ₹10,000 → Paid
+EMI 3 → ₹10,000 → Pending
+EMI 4 → ₹10,000 → Pending
+EMI 5 → ₹10,000 → Pending
+
+EMI fields:
+
+emi_id
+enrollment
+installment_number
+due_date
+amount
+paid_amount
+status
+paid_date
+
+Statuses:
+
+Upcoming
+Due Today
+Paid
+Overdue
+Partially Paid
+Cancelled
+
+Automatically calculate overdue days.
+
+---
+
+24. Payment Follow-up Automation
+
+Create follow-up tasks for:
+
+Due Today
+Tomorrow
+Overdue
+7 Days Overdue
+30 Days Overdue
+
+Do not create duplicate follow-up tasks.
+
+Use an idempotent automation process.
+
+---
+
+25. College Admission Module
+
+College master:
+
+college_id
+college_name
+university
+location
+contact_person
+phone
+email
+website
+status
+
+Admission application:
+
+application_id
+student
+college
+university
+course
+branch
+admission_year
+application_date
+application_fee
+status
+counsellor
+office
+
+Statuses:
+
+Interested
+Application Started
+Documents Pending
+Application Submitted
+Under Review
+Selected
+Admission Confirmed
+Cancelled
+Rejected
+Completed
+
+Admission payment must be separately tracked.
+
+---
+
+26. Semester Fee Management
+
+For college admission students, support:
+
+Admission Fee
+Semester 1
+Semester 2
+Semester 3
+...
+
+Each semester can have:
+
+Total Fee
+Paid
+Due
+Next Due Date
+Status
+
+---
+
+27. Company Management
+
+Company master:
+
+company_id
+company_name
+industry
+location
+hr_name
+hr_mobile
+hr_email
+website
+salary_range
+status
+notes
+
+Track historical hiring:
+
+Total Candidates Applied
+Total Selected
+Total Joined
+Total Placed
+
+These should preferably be calculated from placement records, not manually entered.
+
+---
+
+28. Job Opening Management
+
+Job opening:
+
+job_id
+company
+job_title
+location
+qualification
+branch
+experience
+salary_min
+salary_max
+vacancy
+gender_requirement
+joining_date
+interview_date
+status
+
+Locations:
+
+West Bengal
+Kolkata
+Bardhaman
+Pune
+Bangalore
+Other
+
+---
+
+29. Job Application
+
+One student can apply to multiple jobs.
+
+Student
+ ├── Job Application 1
+ ├── Job Application 2
+ └── Job Application 3
+
+Statuses:
+
+Eligible
+Job Shared
+Applied
+Interview Scheduled
+Interview Attended
+Selected
+Offer Received
+Joining Pending
+Joined
+Rejected
+Not Interested
+
+---
+
+30. Interview Management
+
+Interview fields:
+
+application
+company
+student
+round
+date
+time
+mode
+location
+result
+remarks
+
+Support multiple rounds.
+
+Example:
+
+Round 1 → HR
+Round 2 → Technical
+Round 3 → Management
+
+---
+
+31. Offer & Joining
+
+Offer record:
+
+application
+offer_date
+salary
+designation
+joining_date
+offer_document
+status
+
+Joining record:
+
+company
+designation
+salary
+joining_date
+joining_document
+verified_by
+verification_date
+
+Placement should only become "Completed" after the required joining verification.
+
+---
+
+32. Placement Management
+
+Placement profile:
+
+student
+qualification
+branch
+experience
+preferred_location
+expected_salary
+skills
+resume
+documents
+status
+
+Placement status:
+
+Placement Pending
+Eligible
+Job Shared
+Applied
+Interview Scheduled
+Interview Attended
+Selected
+Offer Letter
+Joining Pending
+Joined
+Placement Completed
+Rejected
+Not Interested
+
+---
+
+33. Finance & Accounts
+
+Income categories:
+
+Course Fee
+Coaching Fee
+Placement Revenue
+Admission Consultancy
+Internship Fee
+Other Income
+
+Expense categories:
+
+Employee Salary
+Office Rent
+Electricity
+Internet
+Marketing
+Advertisement
+Travel
+Vendor Payment
+Other Expense
+
+Financial dashboard:
+
+Total Revenue
+Total Expense
+Net Profit
+Total Collection
+Total Outstanding
+
+Formula:
+
+Net Profit = Revenue - Expense
+
+---
+
+34. Invoice Management
+
+Support:
+
+Invoice Number
+Invoice Date
+Customer
+GSTIN
+Service
+Taxable Amount
+CGST
+SGST
+IGST
+Total
+Payment Status
+
+Generate PDF invoices.
+
+GST configuration must be configurable.
+
+Do not hardcode tax percentages.
+
+Do not make this a full accounting system unless explicitly required.
+
+Provide accounting export/integration capability.
+
+---
+
+35. Employee Target Management
+
+Employee targets:
+
+employee
+period
+lead_target
+call_target
+appointment_target
+enrollment_target
+collection_target
+sales_target
+placement_target
+
+Support:
+
+Daily
+Weekly
+Monthly
+
+---
+
+36. Employee Performance
+
+Dashboard metrics:
+
+Leads Assigned
+Calls Attempted
+Connected Calls
+Follow-ups
+Appointments
+Counselling
+Enrollments
+Sales
+Collection
+Target
+Achievement %
+Conversion %
+
+Formulas:
+
+Lead Conversion %
+= Enrollment / Leads × 100
+
+Collection Achievement %
+= Actual Collection / Target Collection × 100
+
+Appointment Conversion %
+= Appointments / Connected Calls × 100
+
+Handle division by zero safely.
+
+---
+
+37. Incentive Management
+
+Create configurable incentive rules.
+
+Example:
+
+0 – 50,000       → 1%
+50,001 – 100,000 → 2%
+100,001+         → 3%
+
+Do not hardcode these values.
+
+Configuration should support:
+
+percentage
+fixed amount
+slab
+service-specific incentive
+employee-specific incentive
+
+Also configure incentive basis:
+
+Enrollment Value
+OR
+Collected Payment
+OR
+Other
+
+---
+
+38. Reports
+
+Create report pages with:
+
+- Filters
+- Date range
+- Office
+- Employee
+- Course
+- Status
+- Source
+- Export CSV/Excel/PDF where appropriate
+
+Reports:
+
+Lead
+
+- Leads by source
+- Leads by employee
+- Lead conversion
+- Lost leads
+- Duplicate leads
+
+Calling
+
+- Calls
+- Connected
+- Not connected
+- Caller performance
+
+Enrollment
+
+- Course-wise
+- Office-wise
+- Employee-wise
+- Monthly enrollment
+
+Finance
+
+- Collection
+- Outstanding
+- EMI due
+- Revenue
+- Expense
+- Profit/Loss
+
+Placement
+
+- Eligible
+- Applied
+- Interview
+- Selected
+- Joined
+- Placed
+
+Employee
+
+- Target
+- Achievement
+- Conversion
+- Incentive
+
+---
+
+39. Dashboard
+
+Create a professional management dashboard.
+
+Top KPI cards:
+
+Total Leads
+Today's Calls
+Today's Follow-ups
+Today's Enrollment
+Today's Collection
+Today's Due
+Active Students
+Placement Pending
+
+Charts:
+
+- Lead source
+- Lead conversion funnel
+- Monthly revenue
+- Monthly enrollment
+- Office performance
+- Employee performance
+- Course performance
+- Placement funnel
+
+Tables:
+
+Today's Follow-ups
+Recent Enrollments
+Recent Payments
+Overdue EMI
+Pending Placement
+Top Employees
+
+---
+
+40. Office Dashboard
+
+Admin can filter:
+
+All Offices
+Bardhaman
+Magra
+
+Show:
+
+Leads
+Calls
+Enrollment
+Collection
+Due
+Revenue
+Placement
+Employee Performance
+
+---
+
+41. Documents
+
+Document types:
+
+Aadhaar
+Photo
+Signature
+10th Certificate
+12th Certificate
+ITI Certificate
+Diploma Certificate
+B.Tech Documents
+Resume
+Offer Letter
+Joining Letter
+Payment Receipt
+Other
+
+Document status:
+
+Pending
+Uploaded
+Verified
+Rejected
+
+Use secure private storage.
+
+Do not expose private documents through public URLs.
+
+Use authorization-controlled download endpoints.
+
+---
+
+42. Notifications
+
+Create notification infrastructure.
+
+Notification types:
+
+Follow-up Due
+Appointment Reminder
+EMI Due
+Payment Received
+Interview Reminder
+Joining Reminder
+Task Assignment
+Lead Assignment
+
+Initially support in-app notifications.
+
+Architecture must allow future:
+
+SMS
+Email
+WhatsApp
+Push
+
+---
+
+43. Audit Log
+
+Every sensitive action must be audited.
+
+Audit fields:
+
+user
+office
+action
+entity_type
+entity_id
+old_values
+new_values
+ip_address
+user_agent
+created_at
+
+Example:
+
+Payment Due changed
+
+Old: ₹20,000
+New: ₹10,000
+
+Changed By: Admin A
+Date: 19 Aug 2026
+Time: 17:32
+
+Financial records should never be silently deleted.
+
+---
+
+44. Data Security
+
+Implement:
+
+- Backend authorization
+- Role permissions
+- Office-level data isolation
+- Validation
+- Rate limiting
+- CSRF protection where applicable
+- Secure file storage
+- Password hashing
+- Audit logging
+- SQL injection protection
+- XSS protection
+- Secure headers
+- API authentication
+- Input sanitization
+- File type validation
+- File size limits
+
+Never trust frontend permissions.
+
+---
+
+45. Database Principles
+
+Use normalized relational PostgreSQL schema.
+
+Do NOT put everything into a single student table.
+
+Recommended core tables:
+
+users
+roles
+permissions
+role_permissions
+user_roles
+
+offices
+employees
+
+leads
+lead_assignments
+lead_activities
+calls
+appointments
+counselling_sessions
+follow_ups
+
+students
+student_documents
+
+courses
+course_semesters
+subjects
+
+batches
+batch_students
+attendance
+
+enrollments
+payments
+emi_schedules
+invoices
+
+colleges
+college_applications
+college_admissions
+semester_payments
+
+companies
+job_openings
+job_applications
+interviews
+offers
+placements
+
+income
+expenses
+
+employee_targets
+incentive_rules
+incentive_calculations
+
+notifications
+audit_logs
+settings
+
+Use foreign keys.
+
+Use indexes for:
+
+mobile
+email
+lead status
+assigned employee
+office
+created_at
+payment due date
+EMI due date
+application status
+placement status
+
+Use transactions for:
+
+- Enrollment creation
+- Payment creation
+- EMI updates
+- Admission confirmation
+- Placement confirmation
+- Financial operations
+
+---
+
+46. Important Business Rule
+
+Never use manually entered totals as the primary source of financial truth.
+
+For example:
+
+Enrollment Fee = ₹50,000
+Discount = ₹5,000
+
+Final Fee = ₹45,000
+
+Payments:
+₹10,000
+₹15,000
+
+Paid = ₹25,000
+Due = ₹20,000
+
+The backend should calculate:
+
+Paid = SUM(valid payments)
+
+Due = Final Fee - Paid
+
+Do not allow users to directly edit "Paid" or "Due" without an authorized adjustment workflow.
+
+---
+
+47. Status History
+
+Important entities should maintain status history.
+
+At minimum:
+
+- Lead
+- Enrollment
+- Admission Application
+- Job Application
+- Placement
+- Payment/EMI
+
+Example:
+
+New
+→ Contacted
+→ Interested
+→ Counselling
+→ Enrollment
+
+Store every transition.
+
+---
+
+48. UI Requirements
+
+Use a modern enterprise CRM interface.
+
+Design principles:
+
+- Clean
+- Compact
+- Professional
+- Responsive
+- Mobile friendly
+- Fast
+- Accessible
+
+Desktop should use:
+
+Sidebar
+Topbar
+Page Header
+Filters
+KPI
+Data Table
+Detail Drawer/Page
+
+Do not create overly colorful marketing-style dashboards.
+
+Use consistent design tokens.
+
+Use shadcn/ui components.
+
+---
+
+49. Data Tables
+
+All major lists must support:
+
+- Search
+- Pagination
+- Sorting
+- Filtering
+- Column visibility
+- Row selection
+- Bulk actions
+- Export
+- Status filters
+- Date filters
+
+Examples:
+
+Lead Table
+Student Table
+Enrollment Table
+Payment Table
+Job Application Table
+Placement Table
+Employee Table
+
+---
+
+50. Student 360° View
+
+This is a critical screen.
+
+When opening a Student, show:
+
+Student Profile
+│
+├── Overview
+├── Activity Timeline
+├── Counselling
+├── Enrollments
+├── Payments
+├── EMI
+├── Documents
+├── Batch
+├── Attendance
+├── College Admission
+├── Job Applications
+├── Interviews
+├── Offers
+├── Placement
+└── Follow-ups
+
+The admin should understand the student's complete history from one screen.
+
+---
+
+51. Lead 360° View
+
+Lead page:
+
+Lead Information
+Assignment
+Call History
+Activities
+Appointments
+Counselling
+Follow-ups
+Enrollment
+Payment
+Conversion History
+
+---
+
+52. Search
+
+Global search should support:
+
+Lead ID
+Student ID
+Student Name
+Mobile
+WhatsApp
+Email
+Enrollment ID
+Receipt Number
+Application ID
+Job Application ID
+Company
+
+Search should be fast.
+
+Use database indexes and server-side search.
+
+---
+
+53. API Requirements
+
+Create clean APIs such as:
+
+POST   /api/v1/leads
+GET    /api/v1/leads
+GET    /api/v1/leads/{id}
+PUT    /api/v1/leads/{id}
+POST   /api/v1/leads/{id}/assign
+POST   /api/v1/leads/{id}/calls
+POST   /api/v1/leads/{id}/followups
+POST   /api/v1/leads/{id}/convert
+
+GET    /api/v1/students
+GET    /api/v1/students/{id}
+
+POST   /api/v1/enrollments
+GET    /api/v1/enrollments
+
+POST   /api/v1/payments
+GET    /api/v1/payments
+
+GET    /api/v1/emi
+POST   /api/v1/emi/{id}/payment
+
+GET    /api/v1/batches
+POST   /api/v1/batches
+
+GET    /api/v1/companies
+GET    /api/v1/job-openings
+POST   /api/v1/job-applications
+
+GET    /api/v1/placements
+
+GET    /api/v1/dashboard
+GET    /api/v1/reports/...
+
+Use consistent response format.
+
+Example:
+
+{
+  "success": true,
+  "message": "Lead created successfully",
+  "data": {}
+}
+
+Validation errors should be structured consistently.
+
+---
+
+54. Notifications & Background Jobs
+
+Use Laravel queues for:
+
+- Notification sending
+- Email
+- SMS
+- WhatsApp
+- Invoice PDF generation
+- Report generation
+- EMI reminder generation
+- Daily performance calculations
+
+Do not make expensive operations block normal HTTP requests.
+
+Use scheduler for:
+
+Daily EMI check
+Daily overdue check
+Follow-up reminders
+Appointment reminders
+Performance aggregation
+
+---
+
+55. Performance
+
+The system must support future growth.
+
+Do not load all leads/students/payments into the browser.
+
+Use:
+
+- Server-side pagination
+- Server-side filtering
+- Indexed queries
+- Redis caching where useful
+- Query optimization
+- Background jobs
+- Lazy loading
+- Code splitting
+- React Query caching
+
+Avoid N+1 database queries.
+
+---
+
+56. Testing
+
+Create automated tests.
+
+Backend
+
+Test:
+
+- Authentication
+- Authorization
+- Lead creation
+- Duplicate detection
+- Lead assignment
+- Lead conversion
+- Enrollment
+- Payment
+- EMI
+- Admission
+- Job application
+- Placement
+- Incentive
+- Office restrictions
+
+Frontend
+
+Test:
+
+- Login
+- Lead creation
+- Search
+- Filters
+- Forms
+- Payment
+- Student 360
+- Role restrictions
+
+Business Tests
+
+At minimum test:
+
+Lead → Enrollment
+
+Enrollment → Payment
+
+Payment → EMI
+
+Student → Job Application
+
+Job Application → Interview
+
+Interview → Selection
+
+Selection → Joining
+
+Joining → Placement
+
+---
+
+57. Seed Data
+
+Provide realistic demo seed data.
+
+Create:
+
+Offices
+
+Bardhaman
+Magra
+
+Users
+
+Super Admin
+Admin
+Caller
+Counsellor
+Accounts
+Placement Executive
+Trainer
+
+Courses
+
+B.Tech Coaching
+Diploma Coaching
+ITI
+Internship
+Career Counselling
+
+Sample students
+
+At least 20.
+
+Leads
+
+At least 50.
+
+Companies
+
+At least 10.
+
+Job openings
+
+At least 20.
+
+Payments
+
+At least 30.
+
+EMI records
+
+At least 20.
+
+The seeded data must demonstrate the full workflow.
+
+---
+
+58. Demo Workflow
+
+Create demo data that demonstrates:
+
+Lead
+→ Caller Assignment
+→ Call
+→ Counselling
+→ Appointment
+→ Enrollment
+→ Payment
+→ EMI
+→ Batch
+→ Training
+→ Job Application
+→ Interview
+→ Selection
+→ Offer
+→ Joining
+→ Placement
+
+Also demonstrate:
+
+Lead
+→ College Counselling
+→ College Application
+→ Admission
+→ Semester Payment
+
+---
+
+59. Error Handling
+
+Every screen must handle:
+
+Loading
+Empty
+Error
+Unauthorized
+Forbidden
+Validation Error
+Network Error
+Success
+
+Do not show blank screens.
+
+Use meaningful error messages.
+
+---
+
+60. Auditability
+
+Any operation affecting:
+
+- Student
+- Enrollment
+- Payment
+- EMI
+- Admission
+- Placement
+- Employee
+- Permission
+
+must be traceable.
+
+No hard deletion for critical financial/business records.
+
+Use:
+
+Active
+Inactive
+Cancelled
+Archived
+
+where appropriate.
+
+---
+
+61. Development Approach
+
+Do NOT build the entire project blindly in one pass.
+
+Follow this sequence:
+
+Phase 1
+
+Architecture + database + authentication + RBAC + office.
+
+Phase 2
+
+Lead + calling + follow-up + appointment + counselling.
+
+Phase 3
+
+Student + course + enrollment + batch.
+
+Phase 4
+
+Payment + EMI + invoice + finance.
+
+Phase 5
+
+College admission.
+
+Phase 6
+
+Company + jobs + interviews + placement.
+
+Phase 7
+
+Reports + targets + incentives.
+
+Phase 8
+
+Notifications + automation + integrations.
+
+After each phase:
+
+1. Run migrations
+2. Seed test data
+3. Run backend tests
+4. Run frontend build
+5. Fix TypeScript errors
+6. Test permissions
+7. Test responsive UI
+8. Verify business workflow
+
+Do not move to the next phase while the current phase has broken core functionality.
+
+---
+
+62. Production Requirements
+
+Provide:
+
+.env.example
+README.md
+Database migrations
+Seeders
+API documentation
+Setup instructions
+Deployment instructions
+Queue configuration
+Scheduler configuration
+Storage configuration
+Testing instructions
+
+Document:
+
+Local Development
+Production Deployment
+Database Setup
+Redis Setup
+Queue Worker
+Scheduler
+File Storage
+Backup
+Environment Variables
+
+---
+
+63. Backup
+
+Design for:
+
+- PostgreSQL backup
+- File/document backup
+- Database restore
+- Backup retention
+
+Never store uploaded documents only inside temporary application storage.
+
+---
+
+64. Future Integration Readiness
+
+Architecture must allow future integration with:
+
+WhatsApp Business API
+SMS Gateway
+Email
+Cloud Telephony
+Call Recording
+IVR
+Payment Gateway
+Google Calendar
+Accounting Software
+GST Software
+Student Portal
+Employer Portal
+Mobile App
+
+Do not implement fake integrations.
+
+Create clean integration interfaces/services so providers can be added later.
+
+---
+
+65. Important UX Requirement
+
+The CRM should minimize employee data entry.
+
+For example, when a caller converts a lead:
+
+Lead
+→ Convert to Student
+→ Create Enrollment
+
+The system should reuse existing information.
+
+Do not ask employees to enter:
+
+- Name
+- Mobile
+- Address
+- Qualification
+
+again if it already exists.
+
+---
+
+66. Business Rules
+
+Implement these rules carefully:
+
+Rule 1
+
+A lead can have multiple activities.
+
+Rule 2
+
+A lead can be reassigned but assignment history cannot be deleted.
+
+Rule 3
+
+A student can have multiple enrollments.
+
+Rule 4
+
+An enrollment can have multiple payments.
+
+Rule 5
+
+An enrollment can have an EMI schedule.
+
+Rule 6
+
+A student can apply to multiple jobs.
+
+Rule 7
+
+A student can have multiple interviews.
+
+Rule 8
+
+A student can have multiple college applications.
+
+Rule 9
+
+A student can eventually have multiple placement attempts, but only valid placement records should count toward final placement statistics.
+
+Rule 10
+
+Financial transactions must be auditable.
+
+Rule 11
+
+Office restrictions must be enforced on backend APIs.
+
+Rule 12
+
+Critical records should not be hard deleted.
+
+---
+
+67. Final Deliverable
+
+The final application must be a working CRM, not a prototype.
+
+It must include:
+
+✓ Authentication
+✓ RBAC
+✓ Office Management
+✓ Employee Management
+✓ Lead Management
+✓ Lead Assignment
+✓ Calling
+✓ Follow-up
+✓ Appointment
+✓ Counselling
+✓ Student Management
+✓ Course Management
+✓ Enrollment
+✓ Batch Management
+✓ Training
+✓ Attendance
+✓ Payment
+✓ EMI
+✓ Invoice
+✓ College Admission
+✓ Company Management
+✓ Job Opening
+✓ Job Application
+✓ Interview
+✓ Offer
+✓ Joining
+✓ Placement
+✓ Finance
+✓ Expense
+✓ Employee Target
+✓ Incentive
+✓ Dashboard
+✓ Reports
+✓ Documents
+✓ Notifications
+✓ Audit Logs
+✓ Duplicate Detection
+✓ Search
+✓ Filters
+✓ Export
+
+---
+
+68. Critical Instruction to the AI Developer
+
+Do not generate only static pages.
+
+Do not use fake JSON data after implementing the backend.
+
+Do not hardcode dashboard numbers.
+
+Do not hardcode employee names.
+
+Do not hardcode office names into business logic.
+
+Do not hardcode course names into application logic.
+
+Do not hardcode incentive percentages.
+
+Do not hardcode GST rates.
+
+Do not trust frontend permissions.
+
+Do not calculate financial balances only in React.
+
+Do not delete financial history.
+
+Do not create duplicate student records when an existing person is detected.
+
+Every important business operation must use the real PostgreSQL database and backend API.
+
+Every dashboard number must come from real database queries.
+
+Every role restriction must be enforced server-side.
+
+Every important status transition must be auditable.
+
+Build reusable components instead of duplicating code.
+
+Keep business logic in services/domain layers rather than controllers/components.
+
+The final result should be suitable for deploying as the production CRM platform of Educare Skill Academy.
+
+---
+
+69. Definition of Done
+
+Consider the project complete only when:
+
+1. A new lead can be created.
+2. Lead can be assigned to a caller.
+3. Caller can record calls.
+4. Caller can schedule follow-up.
+5. Appointment can be created.
+6. Counselling can be recorded.
+7. Lead can be converted into student.
+8. Student can enroll into a course.
+9. Student can be assigned to a batch.
+10. Payment can be collected.
+11. EMI can be generated.
+12. Due/overdue amount is automatically calculated.
+13. Payment follow-up can be generated.
+14. Student can attend training.
+15. Student can be sent to placement.
+16. Student can apply for jobs.
+17. Interview can be scheduled.
+18. Candidate can be selected.
+19. Offer can be recorded.
+20. Joining can be recorded.
+21. Placement can be completed.
+22. College admission can be managed separately.
+23. Finance can track income and expense.
+24. Employee performance can be calculated.
+25. Incentive can be calculated from configuration.
+26. Office-wise access works.
+27. Role permissions work.
+28. Audit logs work.
+29. Duplicate detection works.
+30. Dashboard reflects real database data.
+31. Reports work with filters.
+32. Application works on desktop and mobile.
+33. Production build succeeds without errors.
+34. Automated tests pass.
+35. No critical security or authorization issue remains.
+
+Build the system incrementally, verify each module before moving to the next, and preserve clean architecture throughout the implementation.

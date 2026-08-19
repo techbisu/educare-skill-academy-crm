@@ -1,0 +1,991 @@
+// Educare Skill Academy - CRM Schema
+// Production-ready schema with normalized tables, FKs, indexes, audit-ready fields.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// CORE: Organization, Users, RBAC, Employees
+// ============================================================
+
+model Office {
+  id           String   @id @default(cuid())
+  officeCode   String   @unique
+  officeName   String
+  officeType   String   @default("Branch")
+  address      String?
+  district     String?
+  state        String?
+  phone        String?
+  email        String?
+  status       String   @default("Active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employees    Employee[]
+  leads        Lead[]
+  students     Student[]
+  enrollments  Enrollment[]
+  payments     Payment[]
+  expenses     Expense[]
+  appointments Appointment[]
+  batches      Batch[]
+  collegeApps  CollegeApplication[]
+  auditLogs    AuditLog[]
+  incomes      Income[]
+  invoices     Invoice[]
+
+  @@index([officeName])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  mobile        String?
+  photoUrl      String?
+  status        String    @default("Active")
+  employeeId    String?   @unique
+  employee      Employee? @relation("UserEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  roles         UserRole[]
+  notifications Notification[]
+  auditActions  AuditLog[]     @relation("AuditActionBy")
+  leadActivities LeadActivity[]
+  appointmentsCreated Appointment[] @relation("ApptCreatedBy")
+  leadAssignmentsByUser LeadAssignment[] @relation("LeadAssignBy")
+  paymentsReceived Payment[]    @relation("PaymentReceivedByUser")
+  employeeTargetsCreated EmployeeTarget[] @relation("EmpTargetCreatedBy")
+
+  @@index([email])
+}
+
+model Role {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  createdAt    DateTime @default(now())
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  name        String @unique
+  group       String
+  description String?
+  createdAt    DateTime @default(now())
+
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Employee {
+  id            String   @id @default(cuid())
+  employeeCode  String   @unique
+  name          String
+  email         String?
+  mobile        String?
+  designation   String?
+  department    String?
+  officeId      String
+  office        Office   @relation(fields: [officeId], references: [id])
+  joiningDate   DateTime?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user              User?               @relation("UserEmployee")
+  assignedLeads     LeadAssignment[]
+  calls             Call[]
+  appointments      Appointment[]
+  counsellings      CounsellingSession[]
+  batches           Batch[]
+  followUps         FollowUp[]
+  enrollments       Enrollment[]         @relation("EnrollmentCounsellor")
+  payments          Payment[]            @relation("PaymentReceivedBy")
+  collegeApps       CollegeApplication[] @relation("CollegeAppCounsellor")
+  targets           EmployeeTarget[]
+  placements        Placement[]          @relation("PlacementExecutive")
+  auditLogs         AuditLog[]           @relation("EmployeeAuditLogs")
+  assignedLeadsAsCurrent Lead[]          @relation("LeadAssignedEmployee")
+
+  @@index([officeId])
+  @@index([name])
+}
+
+// ============================================================
+// CRM: Leads, Activities, Calls, Follow-ups, Appointments, Counselling
+// ============================================================
+
+model Lead {
+  id                String   @id @default(cuid())
+  leadCode          String   @unique
+  studentName       String
+  fatherName        String?
+  motherName        String?
+  mobile            String
+  whatsapp          String?
+  email             String?
+  address           String?
+  district          String?
+  qualification      String?
+  passingYear       String?
+  branchTrade       String?
+  experience        String?
+  source            String
+  leadType          String
+  status            String   @default("New")
+  officeId          String
+  office            Office   @relation(fields: [officeId], references: [id])
+  assignedEmployeeId String?
+  assignedEmployee  Employee? @relation("LeadAssignedEmployee", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  convertedStudent  Student?  @relation("StudentFromLead")
+  remarks           String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  assignments       LeadAssignment[]
+  activities        LeadActivity[]
+  calls             Call[]
+  followUps         FollowUp[]  @relation("LeadFollowUp")
+  appointments      Appointment[]
+  counsellingSessions CounsellingSession[]
+
+  @@index([mobile])
+  @@index([email])
+  @@index([whatsapp])
+  @@index([status])
+  @@index([officeId])
+  @@index([assignedEmployeeId])
+  @@index([createdAt])
+  @@index([source])
+  @@index([leadType])
+}
+
+model LeadAssignment {
+  id              String   @id @default(cuid())
+  leadId          String
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  assignedById    String
+  assignedBy      User     @relation("LeadAssignBy", fields: [assignedById], references: [id])
+  assignmentReason String?
+  assignedAt      DateTime @default(now())
+
+  @@index([leadId])
+  @@index([employeeId])
+}
+
+model LeadActivity {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  action      String
+  description String?
+  metadata    String?
+  createdByUserId String?
+  createdBy   User?    @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+model Call {
+  id              String   @id @default(cuid())
+  leadId          String
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  callDate        DateTime @default(now())
+  callTime        String?
+  duration        Int?
+  direction       String   @default("Outbound")
+  result          String
+  remarks         String?
+  nextFollowupDate DateTime?
+
+  @@index([leadId])
+  @@index([employeeId])
+  @@index([callDate])
+  @@index([result])
+}
+
+model FollowUp {
+  id              String   @id @default(cuid())
+  taskCode        String?
+  entityType      String
+  entityId        String
+  leadId          String?
+  lead            Lead?     @relation("LeadFollowUp", fields: [leadId], references: [id], onDelete: SetNull)
+  studentId       String?
+  student         Student?  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  enrollmentId    String?
+  enrollment      Enrollment? @relation("EnrollmentFollowUp", fields: [enrollmentId], references: [id], onDelete: SetNull)
+  collegeApplicationId String?
+  collegeApplication   CollegeApplication? @relation("CollegeAppFollowUp", fields: [collegeApplicationId], references: [id], onDelete: SetNull)
+  jobApplicationId     String?
+  jobApplication       JobApplication? @relation("JobAppFollowUp", fields: [jobApplicationId], references: [id], onDelete: SetNull)
+  assignedToId    String
+  assignedTo      Employee  @relation(fields: [assignedToId], references: [id])
+  dueDate         DateTime
+  dueTime         String?
+  priority        String   @default("Medium")
+  status          String   @default("Pending")
+  remarks         String?
+  completedAt     DateTime?
+  nextFollowupDate DateTime?
+
+  @@index([entityType, entityId])
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Appointment {
+  id              String   @id @default(cuid())
+  appointmentCode String   @unique
+  leadId          String?
+  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  studentId       String?
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  officeId        String
+  office          Office   @relation(fields: [officeId], references: [id])
+  date            DateTime
+  time            String?
+  type            String
+  purpose         String?
+  status          String   @default("Scheduled")
+  remarks         String?
+  createdById     String
+  createdBy       User     @relation("ApptCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@index([leadId])
+  @@index([employeeId])
+  @@index([officeId])
+  @@index([date])
+  @@index([status])
+}
+
+model CounsellingSession {
+  id                  String   @id @default(cuid())
+  leadId              String?
+  lead                Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  studentId           String?
+  student             Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  counsellorId        String
+  counsellor          Employee @relation(fields: [counsellorId], references: [id])
+  date                DateTime @default(now())
+  currentQualification String?
+  careerInterest      String?
+  skills              String?
+  preferredCourse     String?
+  preferredLocation   String?
+  expectedSalary      Float?
+  recommendation      String?
+  remarks             String?
+  nextFollowup        DateTime?
+
+  @@index([leadId])
+  @@index([studentId])
+  @@index([counsellorId])
+}
+
+// ============================================================
+// STUDENT, COURSES, ENROLLMENT, BATCH, ATTENDANCE
+// ============================================================
+
+model Student {
+  id            String   @id @default(cuid())
+  studentCode   String   @unique
+  name          String
+  fatherName    String?
+  motherName    String?
+  mobile        String
+  whatsapp      String?
+  email         String?
+  dob           DateTime?
+  gender        String?
+  address       String?
+  district      String?
+  qualification String?
+  passingYear   String?
+  branch        String?
+  experience    String?
+  officeId      String
+  office        Office   @relation(fields: [officeId], references: [id])
+  status        String   @default("Active")
+  leadId        String?  @unique
+  lead          Lead?    @relation("StudentFromLead", fields: [leadId], references: [id])
+  remarks       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  enrollments      Enrollment[]
+  payments         Payment[]
+  documents        StudentDocument[]
+  batchStudents    BatchStudent[]
+  attendances      Attendance[]
+  counsellingSessions CounsellingSession[]
+  collegeApplications CollegeApplication[]
+  jobApplications  JobApplication[]
+  placements       Placement[]
+  followUps        FollowUp[]
+
+  @@index([mobile])
+  @@index([email])
+  @@index([officeId])
+  @@index([status])
+  @@index([name])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  courseCode  String   @unique
+  courseName  String
+  category    String
+  description String?
+  duration    String?
+  fee         Float    @default(0)
+  status      String   @default("Active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  semesters   CourseSemester[]
+  enrollments Enrollment[]
+  batches     Batch[]
+
+  @@index([category])
+  @@index([status])
+}
+
+model CourseSemester {
+  id        String @id @default(cuid())
+  courseId  String
+  course    Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int    @default(1)
+
+  subjects  Subject[]
+  batches   Batch[]
+  enrollments Enrollment[]
+
+  @@index([courseId])
+}
+
+model Subject {
+  id         String @id @default(cuid())
+  semesterId String
+  semester   CourseSemester @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  name       String
+  code       String?
+
+  @@index([semesterId])
+}
+
+model Enrollment {
+  id              String   @id @default(cuid())
+  enrollmentCode  String   @unique
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id])
+  semesterId      String?
+  semester        CourseSemester? @relation(fields: [semesterId], references: [id])
+  batchId         String?
+  batch           Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  enrollmentDate   DateTime @default(now())
+  counsellorId     String?
+  counsellor       Employee? @relation("EnrollmentCounsellor", fields: [counsellorId], references: [id])
+  officeId        String
+  office          Office   @relation(fields: [officeId], references: [id])
+  totalFee        Float    @default(0)
+  discount        Float    @default(0)
+  finalFee        Float    @default(0)
+  paidAmount      Float    @default(0)
+  dueAmount       Float    @default(0)
+  paymentStatus   String   @default("Unpaid")
+  status          String   @default("Active")
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments        Payment[]
+  emiSchedules    EmiSchedule[]
+  invoices        Invoice[]
+  followUps       FollowUp[] @relation("EnrollmentFollowUp")
+
+  @@index([studentId])
+  @@index([courseId])
+  @@index([batchId])
+  @@index([officeId])
+  @@index([status])
+  @@index([enrollmentDate])
+}
+
+model Batch {
+  id              String   @id @default(cuid())
+  batchCode       String   @unique
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id])
+  semesterId      String?
+  semester        CourseSemester? @relation(fields: [semesterId], references: [id])
+  branch          String?
+  startDate       DateTime
+  endDate         DateTime?
+  classTime       String?
+  trainerId       String?
+  trainer         Employee? @relation(fields: [trainerId], references: [id], onDelete: SetNull)
+  officeId        String
+  office          Office   @relation(fields: [officeId], references: [id])
+  mode            String   @default("Offline")
+  maximumStudents Int      @default(30)
+  status          String   @default("Upcoming")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  students        BatchStudent[]
+  attendances     Attendance[]
+  enrollments     Enrollment[]
+
+  @@index([courseId])
+  @@index([trainerId])
+  @@index([officeId])
+  @@index([status])
+}
+
+model BatchStudent {
+  id         String  @id @default(cuid())
+  batchId    String
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  joinedAt   DateTime @default(now())
+
+  @@unique([batchId, studentId])
+  @@index([studentId])
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  batchId    String
+  batch      Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     String
+  remarks    String?
+  recordedAt DateTime @default(now())
+
+  @@unique([batchId, studentId, date])
+  @@index([batchId, date])
+  @@index([studentId])
+}
+
+// ============================================================
+// PAYMENTS, EMI, INVOICES
+// ============================================================
+
+model Payment {
+  id              String   @id @default(cuid())
+  receiptNo       String   @unique
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollmentId    String?
+  enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  invoiceId       String?
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  amount          Float
+  paymentDate     DateTime @default(now())
+  paymentMode     String
+  referenceNo     String?
+  receivedById    String?
+  receivedBy      Employee? @relation("PaymentReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  receivedByUserId String?
+  receivedByUser  User?    @relation("PaymentReceivedByUser", fields: [receivedByUserId], references: [id], onDelete: SetNull)
+  officeId        String
+  office          Office   @relation(fields: [officeId], references: [id])
+  remarks         String?
+  status          String   @default("Valid")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@index([paymentDate])
+  @@index([officeId])
+  @@index([status])
+  @@index([receiptNo])
+}
+
+model EmiSchedule {
+  id                String   @id @default(cuid())
+  enrollmentId      String
+  enrollment        Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  installmentNumber Int
+  dueDate           DateTime
+  amount            Float
+  paidAmount        Float    @default(0)
+  status            String   @default("Upcoming")
+  paidDate          DateTime?
+  paymentId         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([enrollmentId])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Invoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  invoiceDate     DateTime @default(now())
+  studentId       String
+  enrollmentId    String?
+  customerName    String
+  gstin           String?
+  serviceName     String
+  taxableAmount   Float    @default(0)
+  cgstRate        Float    @default(0)
+  sgstRate        Float    @default(0)
+  igstRate        Float    @default(0)
+  cgstAmount      Float    @default(0)
+  sgstAmount      Float    @default(0)
+  igstAmount      Float    @default(0)
+  totalAmount     Float    @default(0)
+  paymentStatus   String   @default("Unpaid")
+  officeId        String?
+  office          Office?  @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments        Payment[]
+  enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@index([invoiceDate])
+}
+
+// ============================================================
+// COLLEGE ADMISSION MODULE
+// ============================================================
+
+model College {
+  id            String   @id @default(cuid())
+  collegeName   String
+  university    String?
+  location      String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  website       String?
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  applications  CollegeApplication[]
+
+  @@index([collegeName])
+}
+
+model CollegeApplication {
+  id              String   @id @default(cuid())
+  applicationCode String   @unique
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  collegeId       String
+  college         College  @relation(fields: [collegeId], references: [id])
+  university      String?
+  courseId        String?
+  branch          String?
+  admissionYear   String?
+  applicationDate DateTime @default(now())
+  applicationFee   Float    @default(0)
+  status          String   @default("Interested")
+  counsellorId    String?
+  counsellor      Employee? @relation("CollegeAppCounsellor", fields: [counsellorId], references: [id], onDelete: SetNull)
+  officeId        String
+  office          Office   @relation(fields: [officeId], references: [id])
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  semesterPayments SemesterPayment[]
+  followUps        FollowUp[] @relation("CollegeAppFollowUp")
+
+  @@index([studentId])
+  @@index([collegeId])
+  @@index([status])
+  @@index([officeId])
+}
+
+model SemesterPayment {
+  id              String   @id @default(cuid())
+  applicationId   String
+  application     CollegeApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  semesterName    String
+  totalFee        Float    @default(0)
+  paidAmount      Float    @default(0)
+  dueAmount       Float    @default(0)
+  dueDate         DateTime?
+  status          String   @default("Pending")
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([applicationId])
+  @@index([status])
+}
+
+// ============================================================
+// PLACEMENT: Company, Jobs, Applications, Interviews, Offers, Joining
+// ============================================================
+
+model Company {
+  id            String   @id @default(cuid())
+  companyName   String
+  industry      String?
+  location      String?
+  hrName        String?
+  hrMobile      String?
+  hrEmail       String?
+  website       String?
+  salaryRange   String?
+  status        String   @default("Active")
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobOpenings   JobOpening[]
+  jobApplications JobApplication[]
+  placements    Placement[]
+
+  @@index([companyName])
+  @@index([industry])
+}
+
+model JobOpening {
+  id                 String   @id @default(cuid())
+  jobCode            String   @unique
+  companyId          String
+  company            Company  @relation(fields: [companyId], references: [id])
+  jobTitle           String
+  location           String?
+  qualification      String?
+  branch             String?
+  experience         String?
+  salaryMin          Float?
+  salaryMax          Float?
+  vacancy            Int      @default(1)
+  genderRequirement  String?
+  joiningDate        DateTime?
+  interviewDate      DateTime?
+  status             String   @default("Open")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  applications       JobApplication[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([jobTitle])
+}
+
+model JobApplication {
+  id              String   @id @default(cuid())
+  applicationCode String   @unique
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             JobOpening @relation(fields: [jobId], references: [id])
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id])
+  appliedDate     DateTime @default(now())
+  status          String   @default("Eligible")
+  remarks         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  interviews      Interview[]
+  offer           Offer?
+  placement       Placement?
+  followUps       FollowUp[] @relation("JobAppFollowUp")
+
+  @@index([studentId])
+  @@index([jobId])
+  @@index([companyId])
+  @@index([status])
+}
+
+model Interview {
+  id              String   @id @default(cuid())
+  applicationId   String
+  application     JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  companyId       String
+  studentId       String
+  round           Int      @default(1)
+  roundType       String?
+  date            DateTime
+  time            String?
+  mode            String?
+  location        String?
+  result          String?
+  remarks         String?
+  createdAt       DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([date])
+}
+
+model Offer {
+  id              String   @id @default(cuid())
+  applicationId   String   @unique
+  application     JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  offerDate       DateTime @default(now())
+  salary          Float?
+  designation     String?
+  joiningDate     DateTime?
+  documentUrl     String?
+  status          String   @default("Pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Placement {
+  id              String   @id @default(cuid())
+  placementCode   String   @unique
+  studentId       String
+  student         Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  applicationId   String?  @unique
+  application     JobApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  companyId       String?
+  company         Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  qualification   String?
+  branch          String?
+  experience      String?
+  preferredLocation String?
+  expectedSalary  Float?
+  skills          String?
+  resumeUrl       String?
+  documents       String?
+  designation     String?
+  salary          Float?
+  joiningDate     DateTime?
+  placementExecutiveId String?
+  placementExecutive Employee? @relation("PlacementExecutive", fields: [placementExecutiveId], references: [id], onDelete: SetNull)
+  verifiedById    String?
+  verificationDate DateTime?
+  status          String   @default("Placement Pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([companyId])
+  @@index([status])
+}
+
+// ============================================================
+// FINANCE: Income, Expenses, Targets, Incentives
+// ============================================================
+
+model Income {
+  id          String   @id @default(cuid())
+  incomeCode  String   @unique
+  category    String
+  amount      Float
+  incomeDate  DateTime @default(now())
+  officeId    String
+  office      Office   @relation(fields: [officeId], references: [id])
+  source      String?
+  reference   String?
+  remarks     String?
+  createdAt   DateTime @default(now())
+
+  @@index([incomeDate])
+  @@index([officeId])
+  @@index([category])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  expenseCode String   @unique
+  category    String
+  amount      Float
+  expenseDate DateTime @default(now())
+  officeId    String
+  office      Office   @relation(fields: [officeId], references: [id])
+  vendor      String?
+  reference   String?
+  remarks     String?
+  createdAt   DateTime @default(now())
+
+  @@index([expenseDate])
+  @@index([officeId])
+  @@index([category])
+}
+
+model EmployeeTarget {
+  id                String  @id @default(cuid())
+  employeeId        String
+  employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  period            String
+  periodStart       DateTime
+  periodEnd         DateTime
+  leadTarget        Int     @default(0)
+  callTarget        Int     @default(0)
+  appointmentTarget Int     @default(0)
+  enrollmentTarget  Int     @default(0)
+  collectionTarget  Float   @default(0)
+  salesTarget       Float   @default(0)
+  placementTarget   Int     @default(0)
+  createdById       String?
+  createdBy         User?    @relation("EmpTargetCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt         DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([periodStart, periodEnd])
+}
+
+model IncentiveRule {
+  id              String   @id @default(cuid())
+  name            String
+  basis           String
+  ruleType        String
+  percentage      Float?
+  fixedAmount     Float?
+  slabConfig      String?
+  serviceType     String?
+  employeeId      String?
+  status          String   @default("Active")
+  calculations    IncentiveCalculation[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model IncentiveCalculation {
+  id              String   @id @default(cuid())
+  employeeId      String
+  periodStart     DateTime
+  periodEnd       DateTime
+  basisAmount     Float
+  incentiveAmount Float
+  ruleId          String?
+  rule            IncentiveRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  details         String?
+  createdAt       DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([periodStart, periodEnd])
+}
+
+// ============================================================
+// NOTIFICATIONS, AUDIT, DOCUMENTS, SETTINGS
+// ============================================================
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  title       String
+  message     String
+  entityType  String?
+  entityId    String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  actionUserId String?
+  actionUser  User?    @relation("AuditActionBy", fields: [actionUserId], references: [id], onDelete: SetNull)
+  officeId    String?
+  office      Office?  @relation(fields: [officeId], references: [id], onDelete: SetNull)
+  employeeId  String?
+  employee    Employee? @relation("EmployeeAuditLogs", fields: [employeeId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String
+  oldValues   String?
+  newValues   String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model StudentDocument {
+  id          String   @id @default(cuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  documentType String
+  fileName    String
+  fileUrl     String
+  fileSize    Int?
+  mimeType    String?
+  status      String   @default("Uploaded")
+  uploadedAt  DateTime @default(now())
+  verifiedById String?
+  verifiedAt   DateTime?
+
+  @@index([studentId])
+  @@index([documentType])
+}
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  group       String   @default("General")
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Counter {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  value       Int      @default(0)
+  prefix      String   @default("")
+  updatedAt   DateTime @updatedAt
+}
