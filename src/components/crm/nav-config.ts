@@ -49,7 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'courses', label: 'Courses', icon: BookOpen, permissions: ['course.view'] },
       { id: 'enrollments', label: 'Enrollments', icon: FileText, permissions: ['enrollment.view'] },
       { id: 'batches', label: 'Batches', icon: Layers, permissions: ['batch.view'] },
-      { id: 'attendance', label: 'Attendance', icon: GraduationCap, permissions: ['batch.view'] },
+      { id: 'attendance', label: 'Attendance', icon: GraduationCap, permissions: ['attendance.view', 'batch.view'] },
     ],
   },
   {
@@ -84,6 +84,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'employees', label: 'Employees', icon: Users, permissions: ['employee.view'] },
       { id: 'targets', label: 'Targets', icon: Target, permissions: ['employee.view'] },
       { id: 'incentiveRules', label: 'Incentive Rules', icon: Coins, permissions: ['finance.view'] },
+      { id: 'incentiveCalculations', label: 'Incentive History', icon: Coins, permissions: ['finance.view', 'employee.view'] },
     ],
   },
   {

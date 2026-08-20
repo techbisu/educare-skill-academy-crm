@@ -40,6 +40,7 @@ export const ENTITY_PERMISSION_GROUP: Record<string, string> = {
   employee: 'Employee',
   employeeTarget: 'Employee',
   incentiveRule: 'Finance',
+  incentiveCalculation: 'Finance',
 
   // System — these default to admin-only via the fallback below
   office: 'Office',

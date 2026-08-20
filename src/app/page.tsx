@@ -12,6 +12,7 @@ import {
   JobApplicationsView, PlacementsView, CollegeApplicationsView, IncomeView, ExpensesView,
   OfficesView, EmployeesView, AuditLogsView, InvoicesView, AppointmentsView, CallsView,
   CounsellingView, IncentiveRulesView, TargetsView, FollowUpsView, NotificationsView, CollegesView,
+  AttendanceView, IncentiveCalculationsView,
 } from '@/components/crm/views/generic-views';
 import { SettingsView } from '@/components/crm/views/settings-view';
 import { ReportsView } from '@/components/crm/views/reports-view';
@@ -57,6 +58,7 @@ function ViewRouter({ view, user }: { view: string; user: any }) {
     case 'courses': return <CoursesView />;
     case 'enrollments': return <EnrollmentsView />;
     case 'batches': return <BatchesView />;
+    case 'attendance': return <AttendanceView />;
     case 'payments': return <PaymentsView />;
     case 'emi': return <EmiView />;
     case 'invoices': return <InvoicesView />;
@@ -75,6 +77,7 @@ function ViewRouter({ view, user }: { view: string; user: any }) {
     case 'calls': return <CallsView />;
     case 'counselling': return <CounsellingView />;
     case 'incentiveRules': return <IncentiveRulesView />;
+    case 'incentiveCalculations': return <IncentiveCalculationsView />;
     case 'targets': return <TargetsView />;
     case 'followups': return <FollowUpsView />;
     case 'notifications': return <NotificationsView />;

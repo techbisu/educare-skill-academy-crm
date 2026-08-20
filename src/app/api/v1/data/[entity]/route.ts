@@ -81,7 +81,10 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
         }
         return ok(rec);
       }
-      const { page, pageSize, search, sortBy, sortDir, skip, take } = parsePagination(req);
+      const { page, pageSize, search, sortBy: rawSortBy, sortDir, skip, take } = parsePagination(req);
+      // Use entity-configured orderBy as default (some entities like Call/FollowUp/Counselling
+      // don't have a `createdAt` field, so defaulting to createdAt breaks).
+      const sortBy = rawSortBy === 'createdAt' ? (cfg.orderBy || 'createdAt') : rawSortBy;
       const url = new URL(req.url);
       // Personal entities are always scoped to the current user (except Super Admin)
       const where: any = isPersonalEntity && !user.roles.includes('Super Admin')

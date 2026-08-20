@@ -137,6 +137,7 @@ model Employee {
   placements        Placement[]          @relation("PlacementExecutive")
   auditLogs         AuditLog[]           @relation("EmployeeAuditLogs")
   assignedLeadsAsCurrent Lead[]          @relation("LeadAssignedEmployee")
+  incentiveCalculations IncentiveCalculation[]
 
   @@index([officeId])
   @@index([name])
@@ -901,6 +902,7 @@ model IncentiveRule {
 model IncentiveCalculation {
   id              String   @id @default(cuid())
   employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   periodStart     DateTime
   periodEnd       DateTime
   basisAmount     Float

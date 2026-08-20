@@ -863,3 +863,47 @@ export function CollegesView() {
     />
   );
 }
+
+export function AttendanceView() {
+  return (
+    <GenericListView
+      entity="attendance"
+      title="Attendance"
+      description="Daily attendance records per batch per student"
+      icon={require('lucide-react').GraduationCap}
+      defaultSort="date"
+      allowCreate={false}
+      columns={[
+        { key: 'date', header: 'Date', cell: r => <span className="text-xs">{formatDate(r.date)}</span> },
+        { key: 'batch', header: 'Batch', cell: r => <span className="text-xs">{r.batch?.batchCode || '—'}</span> },
+        { key: 'student', header: 'Student', cell: r => <span className="text-xs">{r.student?.name || '—'}</span> },
+        { key: 'status', header: 'Status', cell: r => <StatusBadge status={r.status} /> },
+        { key: 'remarks', header: 'Remarks', cell: r => <span className="text-xs">{r.remarks || '—'}</span> },
+      ]}
+      filterFields={[
+        { key: 'status', label: 'Status', options: ['Present', 'Absent', 'Late', 'Leave'].map(s => ({ value: s, label: s })) },
+      ]}
+    />
+  );
+}
+
+export function IncentiveCalculationsView() {
+  return (
+    <GenericListView
+      entity="incentiveCalculation"
+      title="Incentive History"
+      description="Calculated incentive payouts per employee per period"
+      icon={require('lucide-react').Coins}
+      defaultSort="periodStart"
+      allowCreate={false}
+      columns={[
+        { key: 'employee', header: 'Employee', cell: r => <span className="font-medium text-sm">{r.employee?.name || '—'}</span> },
+        { key: 'periodStart', header: 'Period', cell: r => <span className="text-xs">{formatDate(r.periodStart)} → {formatDate(r.periodEnd)}</span> },
+        { key: 'basisAmount', header: 'Basis Amount', cell: r => <span className="text-xs">{formatINR(r.basisAmount)}</span> },
+        { key: 'incentiveAmount', header: 'Incentive', cell: r => <span className="text-sm font-bold text-emerald-700">{formatINR(r.incentiveAmount)}</span> },
+        { key: 'rule', header: 'Rule', cell: r => <span className="text-xs">{r.rule?.name || '—'}</span> },
+      ]}
+      filterFields={[]}
+    />
+  );
+}

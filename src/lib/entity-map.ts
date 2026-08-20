@@ -126,6 +126,8 @@ export const ENTITY_MAP = {
   employeeTarget:    { include: targetInclude,      searchable: [], orderBy: 'periodStart' },
   incentiveRule:     { include: incentiveRuleInclude, searchable: ['name','basis','ruleType'], orderBy: 'createdAt' },
   college:           { include: {},                  searchable: ['collegeName','university','location'], orderBy: 'createdAt' },
+  attendance:        { include: { batch: true, student: true }, searchable: [], orderBy: 'date' },
+  incentiveCalculation: { include: { employee: true, rule: true }, searchable: [], orderBy: 'periodStart' },
 } as const;
 
 export type EntityName = keyof typeof ENTITY_MAP;
