@@ -3,10 +3,11 @@
 
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUser, applyOfficeScope } from '@/lib/auth-utils';
+import { requireUser, applyOfficeScope, officeScope } from '@/lib/auth-utils';
 import { auditLog, createNotification, addLeadActivity } from '@/lib/audit';
 import { generateCode } from '@/lib/code-generator';
 import { ok, fail, unauthorized, forbidden, notFound, serverError } from '@/lib/api';
+import { sendEmiReminder, sendInvoice, dispatchNotification } from '@/lib/notification-providers';
 
 async function handler(req: NextRequest, ctx: { params: Promise<{ action: string }> }) {
   try {
@@ -22,6 +23,8 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ action: string
       case 'lead.counselling': return await leadCounselling(user, body);
       case 'lead.convert': return await leadConvert(user, body);
       case 'lead.bulk-assign': return await leadBulkAssign(user, body);
+      case 'lead.update-status': return await leadUpdateStatus(user, body);
+      case 'lead.quick-create': return await leadQuickCreate(user, body);
       case 'student.enroll': return await studentEnroll(user, body);
       case 'enrollment.add-payment': return await enrollmentAddPayment(user, body);
       case 'enrollment.generate-emi': return await enrollmentGenerateEmi(user, body);
@@ -30,6 +33,9 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ action: string
       case 'placement.complete': return await completePlacement(user, body);
       case 'job-application.advance': return await advanceJobApplication(user, body);
       case 'invoice.generate': return await generateInvoice(user, body);
+      case 'invoice.send': return await invoiceSend(user, body);
+      case 'emi.send-reminder': return await emiSendReminder(user, body);
+      case 'notification.send': return await notificationSend(user, body);
       case 'user.change-password': return await changePassword(user, body);
       case 'notification.mark-read': return await markNotificationsRead(user, body);
       case 'duplicate-check': return await duplicateCheck(user, body);
@@ -43,12 +49,96 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ action: string
   }
 }
 
+// Send EMI reminder via configured channels
+async function emiSendReminder(user: any, body: any) {
+  const { emiId, channel } = body;
+  if (!emiId) return fail('emiId required', 400);
+  const emi = await db.emiSchedule.findUnique({ where: { id: emiId }, include: { enrollment: { include: { student: true } } } });
+  if (!emi) return notFound('EMI not found');
+  const scope = officeScope(user);
+  if (scope && emi.enrollment?.officeId !== scope) return forbidden();
+  const { results } = await sendEmiReminder(emiId, channel || 'all');
+  return ok({ results }, `EMI reminder sent via ${results.filter(r => r.success).length}/${results.length} channels`);
+}
+
+// Send invoice via configured channels
+async function invoiceSend(user: any, body: any) {
+  const { invoiceId, channel } = body;
+  if (!invoiceId) return fail('invoiceId required', 400);
+  const inv = await db.invoice.findUnique({ where: { id: invoiceId }, include: { student: true } });
+  if (!inv) return notFound('Invoice not found');
+  const scope = officeScope(user);
+  if (scope && inv.officeId !== scope) return forbidden();
+  const { results } = await sendInvoice(invoiceId, channel || 'email');
+  return ok({ results }, `Invoice sent via ${results.filter(r => r.success).length}/${results.length} channels`);
+}
+
+// Generic notification send (admin/HR can broadcast)
+async function notificationSend(user: any, body: any) {
+  const { userId, channel, to, type, subject, body: messageBody } = body;
+  if (!subject || !messageBody) return fail('subject and body required', 400);
+  const { results } = await dispatchNotification({
+    userId, channel: channel || 'in-app', to: to || {}, type: type || 'Custom',
+    subject, body: messageBody,
+  });
+  return ok({ results }, 'Notification dispatched');
+}
+
+// Quick-create a lead with minimal fields (for Caller mobile UX)
+async function leadQuickCreate(user: any, body: any) {
+  const { name, mobile, source, leadType, officeId } = body;
+  if (!name || !mobile) return fail('name and mobile required', 400);
+  const targetOffice = officeId || user.officeId;
+  const scope = officeScope(user);
+  if (scope && targetOffice !== scope) return forbidden();
+
+  const leadCode = await generateCode('lead');
+  const lead = await db.lead.create({
+    data: {
+      leadCode,
+      studentName: name,
+      mobile,
+      whatsapp: body.whatsapp || mobile,
+      email: body.email || null,
+      source: source || 'Walk-in',
+      leadType: leadType || 'Coaching',
+      status: 'New',
+      officeId: targetOffice,
+      assignedEmployeeId: user.employeeId || null,
+      fatherName: body.fatherName || null,
+      district: body.district || null,
+      qualification: body.qualification || null,
+      branchTrade: body.branchTrade || null,
+    },
+  });
+  if (user.employeeId) {
+    await db.leadAssignment.create({ data: { leadId: lead.id, employeeId: user.employeeId, assignedById: user.id, assignmentReason: 'Quick-create by caller' } });
+  }
+  await addLeadActivity({ leadId: lead.id, action: 'Lead Created', description: `Quick-created by ${user.name}`, createdByUserId: user.id });
+  await auditLog({ actionUserId: user.id, officeId: targetOffice, action: 'lead.quick_create', entityType: 'Lead', entityId: lead.id, newValues: lead });
+  return ok(lead, 'Lead created');
+}
+
+// Update lead status only (drag-drop in kanban)
+async function leadUpdateStatus(user: any, body: any) {
+  const { leadId, status } = body;
+  if (!leadId || !status) return fail('leadId and status required', 400);
+  const lead = await db.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return notFound('Lead not found');
+  const scope = officeScope(user);
+  if (scope && lead.officeId !== scope) return forbidden();
+  const updated = await db.lead.update({ where: { id: leadId }, data: { status } });
+  await addLeadActivity({ leadId, action: 'Status Changed', description: `${lead.status} → ${status}`, metadata: { from: lead.status, to: status }, createdByUserId: user.id });
+  await auditLog({ actionUserId: user.id, action: 'lead.update_status', entityType: 'Lead', entityId: leadId, oldValues: { status: lead.status }, newValues: { status } });
+  return ok(updated, 'Lead status updated');
+}
+
 async function leadAssign(user: any, body: any) {
   const { leadId, employeeId, reason } = body;
   if (!leadId || !employeeId) return fail('leadId and employeeId required', 400);
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return notFound('Lead not found');
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && lead.officeId !== scope) return forbidden();
   const assignment = await db.leadAssignment.create({
     data: { leadId, employeeId, assignedById: user.id, assignmentReason: reason || 'Reassigned' },
@@ -68,7 +158,7 @@ async function leadCall(user: any, body: any) {
   if (!leadId) return fail('leadId required', 400);
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return notFound('Lead not found');
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && lead.officeId !== scope) return forbidden();
   const empId = employeeId || lead.assignedEmployeeId || user.employeeId;
   if (!empId) return fail('employeeId required', 400);
@@ -98,7 +188,7 @@ async function leadFollowUp(user: any, body: any) {
   if (!leadId || !dueDate) return fail('leadId and dueDate required', 400);
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return notFound('Lead not found');
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && lead.officeId !== scope) return forbidden();
   const f = await db.followUp.create({
     data: { entityType: 'Lead', entityId: leadId, leadId, assignedToId: assignedToId || lead.assignedEmployeeId || user.employeeId!, dueDate: new Date(dueDate), dueTime, priority: priority || 'Medium', status: 'Pending', remarks },
@@ -112,7 +202,7 @@ async function leadAppointment(user: any, body: any) {
   if (!leadId || !date) return fail('leadId and date required', 400);
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return notFound();
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && lead.officeId !== scope) return forbidden();
   const apptCode = await generateCode('appointment');
   const appt = await db.appointment.create({
@@ -128,7 +218,7 @@ async function leadCounselling(user: any, body: any) {
   if (!leadId) return fail('leadId required', 400);
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return notFound();
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && lead.officeId !== scope) return forbidden();
   const session = await db.counsellingSession.create({
     data: { leadId, counsellorId: counsellorId || user.employeeId!, date: date ? new Date(date) : new Date(), currentQualification, careerInterest, skills, preferredCourse, preferredLocation, expectedSalary, recommendation, remarks, nextFollowup: nextFollowup ? new Date(nextFollowup) : null },
@@ -143,7 +233,7 @@ async function leadConvert(user: any, body: any) {
   if (!leadId) return fail('leadId required', 400);
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return notFound();
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && lead.officeId !== scope) return forbidden();
 
   const studentCode = await generateCode('student');
@@ -179,7 +269,7 @@ async function leadBulkAssign(user: any, body: any) {
   for (const leadId of leadIds) {
     const lead = await db.lead.findUnique({ where: { id: leadId } });
     if (!lead) continue;
-    const scope = applyOfficeScope(user, {});
+    const scope = officeScope(user);
     if (scope && lead.officeId !== scope) continue;
     await db.leadAssignment.create({ data: { leadId, employeeId, assignedById: user.id, assignmentReason: reason || 'Bulk assigned' } });
     await db.lead.update({ where: { id: leadId }, data: { assignedEmployeeId: employeeId } });
@@ -193,7 +283,7 @@ async function studentEnroll(user: any, body: any) {
   if (!studentId || !courseId) return fail('studentId and courseId required', 400);
   const student = await db.student.findUnique({ where: { id: studentId } });
   if (!student) return notFound('Student not found');
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && student.officeId !== scope) return forbidden();
   const finalFee = (totalFee || 0) - (discount || 0);
   const enrCode = await generateCode('enrollment');
@@ -236,7 +326,7 @@ async function enrollmentAddPayment(user: any, body: any) {
   if (!enrollmentId || !amount || !paymentMode) return fail('enrollmentId, amount, paymentMode required', 400);
   const enr = await db.enrollment.findUnique({ where: { id: enrollmentId } });
   if (!enr) return notFound('Enrollment not found');
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && enr.officeId !== scope) return forbidden();
   const receiptNo = await generateCode('payment');
   const payment = await db.payment.create({
@@ -288,7 +378,7 @@ async function enrollmentGenerateEmi(user: any, body: any) {
   if (!enrollmentId || !installments || !amountPerInstallment) return fail('enrollmentId, installments, amountPerInstallment required', 400);
   const enr = await db.enrollment.findUnique({ where: { id: enrollmentId } });
   if (!enr) return notFound();
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   if (scope && enr.officeId !== scope) return forbidden();
   const start = startDate ? new Date(startDate) : new Date();
   const interval = intervalDays || 30;
@@ -423,7 +513,7 @@ async function markNotificationsRead(user: any, body: any) {
 async function duplicateCheck(user: any, body: any) {
   const { mobile, whatsapp, email, excludeLeadId } = body;
   if (!mobile && !whatsapp && !email) return fail('At least one of mobile/whatsapp/email required', 400);
-  const scope = applyOfficeScope(user, {});
+  const scope = officeScope(user);
   const where: any = { OR: [] };
   if (mobile) where.OR.push({ mobile });
   if (whatsapp) where.OR.push({ whatsapp });

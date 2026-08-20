@@ -18,10 +18,17 @@ import { LEAD_SOURCES, LEAD_TYPES, LEAD_STATUSES, CALL_RESULTS, APPOINTMENT_TYPE
 import { toast } from 'sonner';
 import {
   UserPlus, Phone, Calendar, MessageSquare, FileText, UserCheck, AlertTriangle,
-  Plus, ArrowRight, Search, Filter,
+  Plus, ArrowRight, Search, Filter, LayoutGrid, List,
 } from 'lucide-react';
+import { LeadKanbanView } from '@/components/crm/views/lead-kanban-view';
 
 export function LeadsView({ user }: { user: any }) {
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('leads-view-mode') as 'table' | 'kanban' || 'table';
+    }
+    return 'table';
+  });
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -242,7 +249,25 @@ export function LeadsView({ user }: { user: any }) {
         icon={<UserPlus className="h-5 w-5" />}
         actions={
           <>
-            {selectedLeadIds.length > 0 && (
+            <div className="flex items-center rounded-md border bg-card p-0.5">
+              <Button
+                size="sm"
+                variant={viewMode === 'table' ? 'default' : 'ghost'}
+                className="h-8"
+                onClick={() => { setViewMode('table'); localStorage.setItem('leads-view-mode', 'table'); }}
+              >
+                <List className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Table</span>
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+                className="h-8"
+                onClick={() => { setViewMode('kanban'); localStorage.setItem('leads-view-mode', 'kanban'); }}
+              >
+                <LayoutGrid className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Pipeline</span>
+              </Button>
+            </div>
+            {viewMode === 'table' && selectedLeadIds.length > 0 && (
               <Select onValueChange={(v) => handleBulkAssign(v)}>
                 <SelectTrigger className="h-9 w-[200px]"><SelectValue placeholder={`Bulk assign ${selectedLeadIds.length}`} /></SelectTrigger>
                 <SelectContent>{employees.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
@@ -255,25 +280,29 @@ export function LeadsView({ user }: { user: any }) {
         }
       />
 
-      <DataTable
-        data={data}
-        columns={columns}
-        loading={!data.length && table.page === 1}
-        search={{ value: table.search, onChange: (v) => { table.setSearch(v); table.reset(); }, placeholder: 'Search by name, mobile, email...' }}
-        sortBy={table.sortBy}
-        sortDir={table.sortDir}
-        onSortChange={(s, d) => { table.setSortBy(s); table.setSortDir(d); table.reset(); }}
-        filters={filterDef}
-        pagination={{
-          page: table.page, pageSize: table.pageSize, total: meta.total, totalPages: meta.totalPages,
-          onPageChange: table.setPage, onPageSizeChange: (n) => { table.setPageSize(n); table.reset(); },
-        }}
-        selectedIds={selectedLeadIds}
-        onSelectionChange={setSelectedLeadIds}
-        getRowId={(r) => r.id}
-        onRowClick={openLead360}
-        emptyMessage="No leads found. Create a new lead to get started."
-      />
+      {viewMode === 'kanban' ? (
+        <LeadKanbanView user={user} onViewLead={(lead) => { if (lead.id === '__list__') { setViewMode('table'); localStorage.setItem('leads-view-mode', 'table'); } else { openLead360(lead); } }} />
+      ) : (
+        <DataTable
+          data={data}
+          columns={columns}
+          loading={!data.length && table.page === 1}
+          search={{ value: table.search, onChange: (v) => { table.setSearch(v); table.reset(); }, placeholder: 'Search by name, mobile, email...' }}
+          sortBy={table.sortBy}
+          sortDir={table.sortDir}
+          onSortChange={(s, d) => { table.setSortBy(s); table.setSortDir(d); table.reset(); }}
+          filters={filterDef}
+          pagination={{
+            page: table.page, pageSize: table.pageSize, total: meta.total, totalPages: meta.totalPages,
+            onPageChange: table.setPage, onPageSizeChange: (n) => { table.setPageSize(n); table.reset(); },
+          }}
+          selectedIds={selectedLeadIds}
+          onSelectionChange={setSelectedLeadIds}
+          getRowId={(r) => r.id}
+          onRowClick={openLead360}
+          emptyMessage="No leads found. Create a new lead to get started."
+        />
+      )}
 
       {/* Detail Drawer */}
       {detailOpen && selectedLead && (
@@ -310,34 +339,34 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-full max-w-4xl bg-card shadow-xl overflow-y-auto">
-        <div className="sticky top-0 bg-card border-b px-6 py-4 z-10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">{displayLead.studentName}</h2>
+      <div className="w-full max-w-4xl sm:max-w-4xl bg-card shadow-xl overflow-y-auto max-h-screen">
+        <div className="sticky top-0 bg-card border-b px-4 sm:px-6 py-3 sm:py-4 z-10 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-lg font-semibold truncate">{displayLead.studentName}</h2>
               <StatusBadge status={displayLead.status} />
             </div>
-            <div className="text-sm text-muted-foreground font-mono">{displayLead.leadCode}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground font-mono">{displayLead.leadCode}</div>
           </div>
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={onClose} className="shrink-0">Close</Button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-3 sm:p-6 space-y-4">
           {/* Quick actions */}
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={onAssign}><UserCheck className="h-4 w-4 mr-1" /> Assign</Button>
-            <Button size="sm" variant="outline" onClick={onCall}><Phone className="h-4 w-4 mr-1" /> Log Call</Button>
-            <Button size="sm" variant="outline" onClick={onFollowUp}><Calendar className="h-4 w-4 mr-1" /> Follow-up</Button>
-            <Button size="sm" variant="outline" onClick={onAppointment}><Calendar className="h-4 w-4 mr-1" /> Appointment</Button>
-            <Button size="sm" variant="outline" onClick={onCounselling}><MessageSquare className="h-4 w-4 mr-1" /> Counselling</Button>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <Button size="sm" variant="outline" onClick={onAssign}><UserCheck className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Assign</span></Button>
+            <Button size="sm" variant="outline" onClick={onCall}><Phone className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Log Call</span></Button>
+            <Button size="sm" variant="outline" onClick={onFollowUp}><Calendar className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Follow-up</span></Button>
+            <Button size="sm" variant="outline" onClick={onAppointment}><Calendar className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Appointment</span></Button>
+            <Button size="sm" variant="outline" onClick={onCounselling}><MessageSquare className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Counselling</span></Button>
             {displayLead.status !== 'Converted' && (
-              <Button size="sm" onClick={onConvert}><ArrowRight className="h-4 w-4 mr-1" /> Convert to Student</Button>
+              <Button size="sm" onClick={onConvert}><ArrowRight className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Convert to Student</span></Button>
             )}
           </div>
 
           {loading ? <Skeleton className="h-64" /> : (
             <Tabs defaultValue="overview">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="calls">Calls ({displayLead.calls?.length || 0})</TabsTrigger>
@@ -345,7 +374,7 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
                 <TabsTrigger value="assignments">Assignments</TabsTrigger>
               </TabsList>
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <SectionCard title="Personal Details">
                     <div className="grid grid-cols-2 gap-3">
                       <DataItem label="Father" value={displayLead.fatherName} />
@@ -385,7 +414,7 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
                   <div className="space-y-2">
                     {(displayLead.calls || []).map((c: any) => (
                       <div key={c.id} className="flex items-start justify-between gap-2 p-3 rounded-md bg-muted/30">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium">{c.result}</div>
                           <div className="text-xs text-muted-foreground">{c.remarks}</div>
                           <div className="text-xs text-muted-foreground mt-1">{formatDateTime(c.callDate)} · {c.employee?.name}</div>
@@ -403,7 +432,7 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
                     {(displayLead.counsellingSessions || []).map((c: any) => (
                       <div key={c.id} className="p-3 rounded-md bg-muted/30 space-y-1">
                         <div className="flex justify-between"><span className="font-medium text-sm">Session on {formatDate(c.date)}</span><span className="text-xs text-muted-foreground">{c.counsellor?.name}</span></div>
-                        <div className="text-xs grid grid-cols-2 gap-2 mt-2">
+                        <div className="text-xs grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                           <div><span className="text-muted-foreground">Qualification:</span> {c.currentQualification}</div>
                           <div><span className="text-muted-foreground">Career Interest:</span> {c.careerInterest}</div>
                           <div><span className="text-muted-foreground">Preferred Course:</span> {c.preferredCourse}</div>
@@ -421,12 +450,12 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
                   <div className="space-y-2">
                     {(displayLead.assignments || []).map((a: any) => (
                       <div key={a.id} className="flex items-start justify-between gap-2 p-3 rounded-md bg-muted/30">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="text-sm font-medium">{a.employee?.name}</div>
                           <div className="text-xs text-muted-foreground">Reason: {a.assignmentReason || '—'}</div>
                           <div className="text-xs text-muted-foreground">Assigned by: {a.assignedBy?.name || 'System'}</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">{formatDateTime(a.assignedAt)}</div>
+                        <div className="text-xs text-muted-foreground shrink-0">{formatDateTime(a.assignedAt)}</div>
                       </div>
                     ))}
                   </div>

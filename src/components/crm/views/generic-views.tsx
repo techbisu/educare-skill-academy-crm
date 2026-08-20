@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LucideIcon } from 'lucide-react';
+import { LucideIcon, Bell, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   COURSE_CATEGORIES, BATCH_MODES, BATCH_STATUSES, PAYMENT_MODES, INCOME_CATEGORIES, EXPENSE_CATEGORIES,
@@ -211,11 +211,29 @@ export function PaymentsView() {
 }
 
 export function EmiView() {
+  const [sending, setSending] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const sendReminder = async (emiId: string) => {
+    setSending(emiId);
+    try {
+      const res = await api.action('emi.send-reminder', { emiId, channel: 'all' });
+      if (res.success) {
+        toast.success(res.message || 'Reminder sent');
+      } else {
+        toast.error(res.message || 'Failed to send reminder');
+      }
+    } finally {
+      setSending(null);
+    }
+  };
+
   return (
     <GenericListView
+      key={reloadKey}
       entity="emi"
       title="EMI Schedule"
-      description="EMI installments with auto-overdue detection"
+      description="EMI installments with auto-overdue detection — click Send Reminder to notify student"
       icon={require('lucide-react').CreditCard}
       defaultSort="dueDate"
       columns={[
@@ -226,6 +244,19 @@ export function EmiView() {
         { key: 'dueDate', header: 'Due Date', cell: r => <span className="text-xs">{formatDate(r.dueDate)}</span> },
         { key: 'paidDate', header: 'Paid Date', cell: r => <span className="text-xs">{formatDate(r.paidDate)}</span> },
         { key: 'status', header: 'Status', cell: r => <StatusBadge status={r.status} /> },
+        { key: '_actions', header: 'Actions', cell: r => (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            disabled={sending === r.id || r.status === 'Paid' || r.status === 'Cancelled'}
+            onClick={(e) => { e.stopPropagation(); sendReminder(r.id); }}
+          >
+            {sending === r.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Bell className="h-3 w-3 mr-1" />}
+            <span className="hidden sm:inline">Send Reminder</span>
+            <span className="sm:hidden">Remind</span>
+          </Button>
+        ) },
       ]}
       filterFields={[
         { key: 'status', label: 'Status', options: ['Upcoming','Due Today','Paid','Overdue','Partially Paid','Cancelled'].map(s => ({ value: s, label: s })) },
@@ -509,11 +540,22 @@ export function AuditLogsView() {
 }
 
 export function InvoicesView() {
+  const [sending, setSending] = useState<string | null>(null);
+  const sendInvoice = async (invoiceId: string) => {
+    setSending(invoiceId);
+    try {
+      const res = await api.action('invoice.send', { invoiceId, channel: 'all' });
+      if (res.success) toast.success(res.message || 'Invoice sent');
+      else toast.error(res.message || 'Failed to send');
+    } finally {
+      setSending(null);
+    }
+  };
   return (
     <GenericListView
       entity="invoice"
       title="Invoices"
-      description="GST-compliant invoices with configurable tax rates"
+      description="GST-compliant invoices with configurable tax rates — click Send to email/SMS/WhatsApp"
       icon={require('lucide-react').FileSignature}
       defaultSort="invoiceDate"
       allowCreate={false}
@@ -525,6 +567,12 @@ export function InvoicesView() {
         { key: 'totalAmount', header: 'Total', cell: r => <span className="font-semibold">{formatINR(r.totalAmount)}</span> },
         { key: 'invoiceDate', header: 'Date', cell: r => <span className="text-xs">{formatDate(r.invoiceDate)}</span> },
         { key: 'paymentStatus', header: 'Status', cell: r => <StatusBadge status={r.paymentStatus} /> },
+        { key: '_actions', header: 'Actions', cell: r => (
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={sending === r.id} onClick={(e) => { e.stopPropagation(); sendInvoice(r.id); }}>
+            {sending === r.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+            <span className="hidden sm:inline">Send</span>
+          </Button>
+        ) },
       ]}
       filterFields={[
         { key: 'paymentStatus', label: 'Status', options: [{ value: 'Unpaid', label: 'Unpaid' }, { value: 'Partial', label: 'Partial' }, { value: 'Paid', label: 'Paid' }] },

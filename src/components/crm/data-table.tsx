@@ -83,9 +83,9 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div className="space-y-3">
       {(search || filters || actions) && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
           {search && (
-            <div className="relative flex-1 min-w-[200px] max-w-md">
+            <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder={search.placeholder || 'Search...'}
@@ -186,34 +186,36 @@ export function DataTable<T extends Record<string, any>>({
 
       {pagination && (
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-          <div className="text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.pageSize + 1}</span>
-            {' '}-{' '}
+          <div className="text-muted-foreground text-xs sm:text-sm">
+            <span className="hidden sm:inline">Showing </span>
+            <span className="font-medium text-foreground">{(pagination.page - 1) * pagination.pageSize + 1}</span>
+            {' - '}
             <span className="font-medium text-foreground">{Math.min(pagination.page * pagination.pageSize, pagination.total)}</span>
-            {' '}of{' '}
+            <span className="hidden sm:inline"> of </span>
+            <span className="sm:hidden">/</span>
             <span className="font-medium text-foreground">{pagination.total}</span>
           </div>
           <div className="flex items-center gap-1">
             {pagination.onPageSizeChange && (
               <select
-                className="h-8 rounded border bg-background px-2 text-xs"
+                className="h-8 rounded border bg-background px-2 text-xs hidden sm:block"
                 value={pagination.pageSize}
                 onChange={e => pagination.onPageSizeChange?.(Number(e.target.value))}
               >
                 {[10, 20, 50, 100].map(n => <option key={n} value={n}>{n} / page</option>)}
               </select>
             )}
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={pagination.page <= 1} onClick={() => pagination.onPageChange(1)}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 hidden sm:flex" disabled={pagination.page <= 1} onClick={() => pagination.onPageChange(1)} aria-label="First page">
               <ChevronsLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={pagination.page <= 1} onClick={() => pagination.onPageChange(pagination.page - 1)}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={pagination.page <= 1} onClick={() => pagination.onPageChange(pagination.page - 1)} aria-label="Previous page">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="px-2">Page {pagination.page} of {Math.max(pagination.totalPages, 1)}</span>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={pagination.page >= pagination.totalPages} onClick={() => pagination.onPageChange(pagination.page + 1)}>
+            <span className="px-2 text-xs sm:text-sm">Page {pagination.page} of {Math.max(pagination.totalPages, 1)}</span>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={pagination.page >= pagination.totalPages} onClick={() => pagination.onPageChange(pagination.page + 1)} aria-label="Next page">
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" disabled={pagination.page >= pagination.totalPages} onClick={() => pagination.onPageChange(pagination.totalPages)}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 hidden sm:flex" disabled={pagination.page >= pagination.totalPages} onClick={() => pagination.onPageChange(pagination.totalPages)} aria-label="Last page">
               <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>

@@ -363,6 +363,7 @@ model Student {
   jobApplications  JobApplication[]
   placements       Placement[]
   followUps        FollowUp[]
+  invoices         Invoice[]
 
   @@index([mobile])
   @@index([email])
@@ -594,6 +595,7 @@ model Invoice {
 
   payments        Payment[]
   enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  student         Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
   @@index([enrollmentId])

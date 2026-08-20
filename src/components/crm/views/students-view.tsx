@@ -175,23 +175,23 @@ function Student360Drawer({ student, loading, onClose, onRefresh, onEnroll, onPa
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/40" onClick={onClose} />
-      <div className="w-full max-w-5xl bg-card shadow-xl overflow-y-auto">
-        <div className="sticky top-0 bg-card border-b px-6 py-4 z-10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">{s.name}</h2>
+      <div className="w-full max-w-5xl bg-card shadow-xl overflow-y-auto max-h-screen">
+        <div className="sticky top-0 bg-card border-b px-4 sm:px-6 py-3 sm:py-4 z-10 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-lg font-semibold truncate">{s.name}</h2>
               <StatusBadge status={s.status} />
             </div>
-            <div className="text-sm text-muted-foreground font-mono">{s.studentCode} · {s.office?.officeName}</div>
+            <div className="text-xs sm:text-sm text-muted-foreground font-mono">{s.studentCode} · {s.office?.officeName}</div>
           </div>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={onEnroll}><GraduationCap className="h-4 w-4 mr-1" /> Enroll</Button>
-            <Button size="sm" variant="outline" onClick={onPay}><Wallet className="h-4 w-4 mr-1" /> Payment</Button>
-            <Button variant="ghost" onClick={onClose}>Close</Button>
+          <div className="flex gap-1 sm:gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={onEnroll}><GraduationCap className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Enroll</span></Button>
+            <Button size="sm" variant="outline" onClick={onPay}><Wallet className="h-4 w-4 sm:mr-1" /><span className="hidden sm:inline">Payment</span></Button>
+            <Button variant="ghost" onClick={onClose} className="px-2">Close</Button>
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-3 sm:p-6 space-y-4">
           {loading ? <div className="text-center py-12">Loading...</div> : (
             <Tabs defaultValue="overview">
               <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 h-auto">

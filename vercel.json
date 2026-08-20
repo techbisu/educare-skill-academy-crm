@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install --frozen-lockfile",
+  "crons": [
+    {
+      "path": "/api/v1/cron/emi-reminders?secret=${CRON_SECRET}",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}

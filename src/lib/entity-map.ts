@@ -131,5 +131,18 @@ export const ENTITY_MAP = {
 export type EntityName = keyof typeof ENTITY_MAP;
 
 export function getModel(name: EntityName) {
-  return (db as any)[name] as any;
+  // Map entity names to Prisma model property names (case-sensitive)
+  const prismaModelMap: Partial<Record<EntityName, string>> = {
+    emi: 'emiSchedule',
+    counselling: 'counsellingSession',
+    followUp: 'followUp',
+    jobOpening: 'jobOpening',
+    jobApplication: 'jobApplication',
+    collegeApplication: 'collegeApplication',
+    employeeTarget: 'employeeTarget',
+    incentiveRule: 'incentiveRule',
+    auditLog: 'auditLog',
+  };
+  const modelName = prismaModelMap[name] || name;
+  return (db as any)[modelName] as any;
 }

@@ -169,37 +169,41 @@ export function AppShell({ initialView, onNavigate, children }: {
 
       {/* Mobile sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="w-72 p-0">
+        <SheetContent side="left" className="w-[280px] sm:w-72 p-0 max-w-[85vw]">
           {SidebarContent}
         </SheetContent>
       </Sheet>
 
       {/* Main */}
-      <div className="flex-1 lg:pl-60 flex flex-col min-h-screen">
+      <div className="flex-1 lg:pl-60 flex flex-col min-h-screen w-full">
         {/* Topbar */}
-        <header className="sticky top-0 z-20 h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 flex items-center gap-2 px-3">
-          <Button variant="ghost" size="sm" className="lg:hidden h-9 w-9 p-0" onClick={() => setSidebarOpen(true)}>
+        <header className="sticky top-0 z-20 h-14 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 flex items-center gap-2 px-3 sm:px-4">
+          <Button variant="ghost" size="sm" className="lg:hidden h-9 w-9 p-0 shrink-0" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </Button>
 
-          {/* Global search */}
-          <div className="relative flex-1 max-w-xl">
+          {/* Global search - hidden on very small screens, replaced by icon */}
+          <div className="relative flex-1 max-w-xl min-w-0">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search leads, students, payments, companies..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
+              className="pl-9 h-9 hidden sm:block"
             />
+            {/* Mobile search trigger */}
+            <Button variant="ghost" size="sm" className="sm:hidden h-9 w-9 p-0" onClick={() => { const v = prompt('Search leads, students, payments...'); if (v) setSearchQuery(v); }} aria-label="Search">
+              <Search className="h-4 w-4" />
+            </Button>
             {searchResults.length > 0 && (
-              <div className="absolute top-full mt-1 left-0 right-0 bg-card border rounded-md shadow-lg max-h-96 overflow-y-auto z-50">
+              <div className="absolute top-full mt-1 left-0 right-0 bg-card border rounded-md shadow-lg max-h-96 overflow-y-auto z-50 min-w-[280px]">
                 {searchResults.map((r, i) => (
                   <button
                     key={i}
                     onClick={() => { navigate(r.entity === 'lead' ? 'leads' : r.entity === 'student' ? 'students' : r.entity); setSearchQuery(''); setSearchResults([]); }}
                     className="w-full flex items-start gap-2 px-3 py-2 hover:bg-muted text-left"
                   >
-                    <Badge variant="outline" className="text-xs font-normal">{r.type}</Badge>
+                    <Badge variant="outline" className="text-xs font-normal shrink-0">{r.type}</Badge>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{r.label}</div>
                       {r.sub && <div className="text-xs text-muted-foreground truncate">{r.sub}</div>}
@@ -215,15 +219,15 @@ export function AppShell({ initialView, onNavigate, children }: {
             )}
           </div>
 
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1 shrink-0">
             {user.officeName && (
-              <Badge variant="outline" className="hidden sm:inline-flex text-xs">{user.officeName}</Badge>
+              <Badge variant="outline" className="hidden md:inline-flex text-xs">{user.officeName}</Badge>
             )}
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hidden sm:flex" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
               <Sun className="h-4 w-4 dark:hidden" />
               <Moon className="h-4 w-4 hidden dark:block" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative" onClick={() => navigate('notifications')}>
+            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 relative" onClick={() => navigate('notifications')} aria-label="Notifications">
               <Bell className="h-4 w-4" />
               {me && me.unreadNotifications > 0 && (
                 <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
@@ -231,21 +235,25 @@ export function AppShell({ initialView, onNavigate, children }: {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 gap-2">
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 sm:gap-2 sm:w-auto">
                   <Avatar className="h-6 w-6">
                     <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs">{user.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</AvatarFallback>
                   </Avatar>
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-3 w-3 hidden sm:block" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
-                  <div className="font-medium">{user.name}</div>
-                  <div className="text-xs text-muted-foreground font-normal">{user.email}</div>
+                  <div className="font-medium truncate">{user.name}</div>
+                  <div className="text-xs text-muted-foreground font-normal truncate">{user.email}</div>
+                  <div className="text-xs text-muted-foreground font-normal sm:hidden mt-0.5">{user.officeName} · {user.roles?.[0]}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('settings')}>
                   <SettingsIcon className="h-4 w-4 mr-2" /> Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="sm:hidden">
+                  {theme === 'dark' ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />} Toggle theme
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => signOut({ callbackUrl: '/' })}>
                   <LogOut className="h-4 w-4 mr-2" /> Sign out
@@ -256,7 +264,7 @@ export function AppShell({ initialView, onNavigate, children }: {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 min-w-0">
           {children({ view: currentView, user, officeId: user?.officeId })}
         </main>
       </div>
