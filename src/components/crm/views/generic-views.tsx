@@ -520,22 +520,110 @@ export function EmployeesView() {
 }
 
 export function AuditLogsView() {
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+
+  // Helper: format old/new values for display
+  const formatChanges = (oldValues?: string, newValues?: string) => {
+    try {
+      const oldV = oldValues ? JSON.parse(oldValues) : null;
+      const newV = newValues ? JSON.parse(newValues) : null;
+      const changes: { field: string; from: any; to: any }[] = [];
+      const allKeys = new Set([...Object.keys(oldV || {}), ...Object.keys(newV || {})]);
+      for (const k of Array.from(allKeys)) {
+        if (['id', 'createdAt', 'updatedAt', 'passwordHash'].includes(k)) continue;
+        const o = oldV?.[k];
+        const n = newV?.[k];
+        if (JSON.stringify(o) !== JSON.stringify(n)) {
+          changes.push({ field: k, from: o, to: n });
+        }
+      }
+      return changes;
+    } catch {
+      return [];
+    }
+  };
+
   return (
-    <GenericListView
-      entity="auditLog"
-      title="Audit Logs"
-      description="Immutable record of all sensitive actions"
-      icon={require('lucide-react').ScrollText}
-      defaultSort="createdAt"
-      allowCreate={false}
-      columns={[
-        { key: 'createdAt', header: 'Timestamp', cell: r => <span className="text-xs font-mono">{new Date(r.createdAt).toLocaleString('en-IN')}</span> },
-        { key: 'action', header: 'Action', cell: r => <span className="text-xs font-medium">{r.action}</span> },
-        { key: 'entityType', header: 'Entity', cell: r => <span className="text-xs">{r.entityType}:{r.entityId.slice(-6)}</span> },
-        { key: 'actionUser', header: 'By', cell: r => <span className="text-xs">{r.actionUser?.name || 'System'}</span> },
-        { key: 'office', header: 'Office', cell: r => <span className="text-xs">{r.office?.officeName || '—'}</span> },
-      ]}
-    />
+    <>
+      <GenericListView
+        entity="auditLog"
+        title="Audit Logs"
+        description="Immutable record of all sensitive actions — click a row to see full details including who completed/converted each item"
+        icon={require('lucide-react').ScrollText}
+        defaultSort="createdAt"
+        allowCreate={false}
+        columns={[
+          { key: 'createdAt', header: 'Timestamp', cell: r => <span className="text-xs font-mono">{new Date(r.createdAt).toLocaleString('en-IN')}</span> },
+          { key: 'action', header: 'Action', cell: r => {
+            const isConversion = r.action === 'lead.convert' || (r.action === 'lead.update_status' && r.newValues && JSON.parse(r.newValues)?.status === 'Converted');
+            const isCompletion = r.action === 'placement.complete';
+            return (
+              <span className="text-xs font-medium flex items-center gap-1">
+                {r.action}
+                {isConversion && <StatusBadge status="Converted" />}
+                {isCompletion && <StatusBadge status="Placement Completed" />}
+              </span>
+            );
+          } },
+          { key: 'entityType', header: 'Entity', cell: r => <span className="text-xs">{r.entityType}:{r.entityId.slice(-6)}</span> },
+          { key: 'actionUser', header: 'Performed By', cell: r => (
+            <div className="min-w-0">
+              <div className="text-xs font-medium">{r.actionUser?.name || 'System'}</div>
+              {r.actionUser?.email && <div className="text-[10px] text-muted-foreground truncate">{r.actionUser.email}</div>}
+            </div>
+          ) },
+          { key: 'office', header: 'Office', cell: r => <span className="text-xs">{r.office?.officeName || '—'}</span> },
+          { key: '_changes', header: 'Changes', cell: r => {
+            const changes = formatChanges(r.oldValues, r.newValues);
+            if (changes.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
+            return (
+              <span className="text-xs text-muted-foreground">{changes.length} field{changes.length > 1 ? 's' : ''} changed</span>
+            );
+          } },
+        ]}
+        actions={undefined}
+      />
+      {/* Click-to-view detail */}
+      {selectedLog && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/40" onClick={() => setSelectedLog(null)} />
+          <div className="w-full max-w-2xl bg-card shadow-xl overflow-y-auto max-h-screen">
+            <div className="sticky top-0 bg-card border-b px-4 py-3 z-10 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold">{selectedLog.action}</div>
+                <div className="text-xs text-muted-foreground font-mono">{selectedLog.entityType}:{selectedLog.entityId}</div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedLog(null)}>Close</Button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-xs uppercase text-muted-foreground">Performed by</span><div className="font-medium">{selectedLog.actionUser?.name || 'System'}</div></div>
+                <div><span className="text-xs uppercase text-muted-foreground">Timestamp</span><div>{new Date(selectedLog.createdAt).toLocaleString('en-IN')}</div></div>
+                <div><span className="text-xs uppercase text-muted-foreground">Office</span><div>{selectedLog.office?.officeName || '—'}</div></div>
+                <div><span className="text-xs uppercase text-muted-foreground">IP Address</span><div className="font-mono text-xs">{selectedLog.ipAddress || '—'}</div></div>
+              </div>
+              <div>
+                <div className="text-xs uppercase text-muted-foreground mb-2">Field Changes</div>
+                <div className="space-y-2">
+                  {formatChanges(selectedLog.oldValues, selectedLog.newValues).map((c, i) => (
+                    <div key={i} className="p-2 rounded-md bg-muted/30 text-xs">
+                      <div className="font-medium mb-1">{c.field}</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div><span className="text-muted-foreground">From:</span> <span className="font-mono break-all">{c.from == null ? '∅' : typeof c.from === 'object' ? '…' : String(c.from)}</span></div>
+                        <div><span className="text-muted-foreground">To:</span> <span className="font-mono break-all text-emerald-700">{c.to == null ? '∅' : typeof c.to === 'object' ? '…' : String(c.to)}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                  {formatChanges(selectedLog.oldValues, selectedLog.newValues).length === 0 && (
+                    <div className="text-xs text-muted-foreground">No field-level changes recorded.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

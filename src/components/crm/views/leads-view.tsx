@@ -366,12 +366,13 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
 
           {loading ? <Skeleton className="h-64" /> : (
             <Tabs defaultValue="overview">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 h-auto">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="calls">Calls ({displayLead.calls?.length || 0})</TabsTrigger>
                 <TabsTrigger value="counselling">Counselling ({displayLead.counsellingSessions?.length || 0})</TabsTrigger>
                 <TabsTrigger value="assignments">Assignments</TabsTrigger>
+                <TabsTrigger value="audit">Audit</TabsTrigger>
               </TabsList>
               <TabsContent value="overview" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -458,6 +459,58 @@ function Lead360Drawer({ lead, lead360Data, loading, onClose, onRefresh, onAssig
                         <div className="text-xs text-muted-foreground shrink-0">{formatDateTime(a.assignedAt)}</div>
                       </div>
                     ))}
+                  </div>
+                </SectionCard>
+              </TabsContent>
+              <TabsContent value="audit">
+                <SectionCard title="Audit History — who did what, when">
+                  <div className="space-y-2">
+                    {(displayLead.auditEntries || []).length === 0 && (
+                      <div className="text-sm text-muted-foreground text-center py-4">No audit entries recorded.</div>
+                    )}
+                    {(displayLead.auditEntries || []).map((a: any) => {
+                      // Highlight conversion / completion actions
+                      const isConversion = a.action === 'lead.convert' || a.action === 'lead.update_status' && a.newValues?.status === 'Converted';
+                      return (
+                        <div key={a.id} className={`flex items-start justify-between gap-2 p-3 rounded-md ${isConversion ? 'bg-emerald-50 border border-emerald-200' : 'bg-muted/30'}`}>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium flex items-center gap-2 flex-wrap">
+                              {a.action}
+                              {isConversion && <StatusBadge status="Converted" />}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              By: <span className="font-medium text-foreground">{a.actionUser?.name || 'System'}</span>
+                              {a.actionUser?.email && <span className="ml-1">({a.actionUser.email})</span>}
+                            </div>
+                            {a.oldValues && a.newValues && (
+                              <div className="text-xs mt-1 space-y-0.5">
+                                {(() => {
+                                  try {
+                                    const oldV = JSON.parse(a.oldValues);
+                                    const newV = JSON.parse(a.newValues);
+                                    const changes: string[] = [];
+                                    for (const k of Object.keys(newV)) {
+                                      if (k === 'id' || k === 'updatedAt' || k === 'createdAt') continue;
+                                      const o = oldV?.[k];
+                                      const n = newV[k];
+                                      if (JSON.stringify(o) !== JSON.stringify(n)) {
+                                        changes.push(`${k}: ${o == null ? '∅' : typeof o === 'object' ? '…' : String(o).slice(0,40)} → ${n == null ? '∅' : typeof n === 'object' ? '…' : String(n).slice(0,40)}`);
+                                      }
+                                    }
+                                    return changes.length > 0 ? (
+                                      <div className="text-xs text-muted-foreground mt-1 font-mono">
+                                        {changes.slice(0, 5).map((c, i) => <div key={i}>• {c}</div>)}
+                                      </div>
+                                    ) : null;
+                                  } catch { return null; }
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground shrink-0">{formatDateTime(a.createdAt)}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </SectionCard>
               </TabsContent>

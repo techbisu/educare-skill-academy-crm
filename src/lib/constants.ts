@@ -116,24 +116,31 @@ export const PERMISSION_GROUPS = [
   'Payment', 'EMI', 'Invoice', 'CollegeAdmission',
   'Company', 'JobOpening', 'JobApplication', 'Interview', 'Placement',
   'Finance', 'Employee', 'Office', 'User', 'Role', 'Report',
-  'Notification', 'AuditLog', 'Document', 'Setting', 'Dashboard', 'FollowUp'
+  'Notification', 'AuditLog', 'Document', 'Setting', 'Dashboard', 'FollowUp',
+  'Appointment', 'Counselling', 'Attendance',
 ] as const;
 
 export const PERMISSION_ACTIONS = ['view', 'create', 'edit', 'delete', 'assign', 'export'] as const;
 
-// Role → permission mapping. Super Admin = everything.
+// Role → permission mapping. Follows the principle of LEAST PRIVILEGE.
+// Super Admin = everything. Other roles get only what they need.
 export const ROLE_PERMISSIONS: Record<string, { group: string; actions: string[] }[]> = {
   'Super Admin': PERMISSION_GROUPS.flatMap(g => [{ group: g, actions: [...PERMISSION_ACTIONS] }]),
+
   'Admin': [
+    // Sees everything except role/user-management internals (those stay with Super Admin/HR)
     { group: 'Dashboard', actions: ['view'] },
-    { group: 'Lead', actions: ['view', 'create', 'edit', 'delete', 'assign'] },
+    { group: 'Lead', actions: ['view', 'create', 'edit', 'delete', 'assign', 'export'] },
+    { group: 'Appointment', actions: ['view', 'create', 'edit'] },
+    { group: 'Counselling', actions: ['view', 'create', 'edit'] },
     { group: 'Student', actions: ['view', 'create', 'edit'] },
     { group: 'Enrollment', actions: ['view', 'create', 'edit'] },
     { group: 'Course', actions: ['view', 'create', 'edit', 'delete'] },
     { group: 'Batch', actions: ['view', 'create', 'edit'] },
+    { group: 'Attendance', actions: ['view', 'create', 'edit'] },
     { group: 'Payment', actions: ['view', 'create', 'edit', 'export'] },
     { group: 'EMI', actions: ['view', 'edit'] },
-    { group: 'Invoice', actions: ['view', 'create', 'export'] },
+    { group: 'Invoice', actions: ['view', 'create', 'edit', 'export'] },
     { group: 'CollegeAdmission', actions: ['view', 'create', 'edit'] },
     { group: 'Company', actions: ['view', 'create', 'edit'] },
     { group: 'JobOpening', actions: ['view', 'create', 'edit'] },
@@ -143,32 +150,42 @@ export const ROLE_PERMISSIONS: Record<string, { group: string; actions: string[]
     { group: 'Finance', actions: ['view', 'create', 'edit', 'export'] },
     { group: 'Employee', actions: ['view', 'create', 'edit'] },
     { group: 'Office', actions: ['view', 'create', 'edit'] },
-    { group: 'User', actions: ['view', 'create', 'edit'] },
-    { group: 'Role', actions: ['view'] },
+    { group: 'Document', actions: ['view', 'create', 'edit'] },
+    { group: 'FollowUp', actions: ['view', 'create', 'edit'] },
     { group: 'Report', actions: ['view', 'export'] },
     { group: 'Notification', actions: ['view'] },
     { group: 'AuditLog', actions: ['view'] },
-    { group: 'Document', actions: ['view', 'create', 'edit'] },
     { group: 'Setting', actions: ['view', 'edit'] },
-    { group: 'FollowUp', actions: ['view', 'create', 'edit'] },
   ],
+
   'HR': [
+    // HR manages people, not business data
     { group: 'Dashboard', actions: ['view'] },
     { group: 'Employee', actions: ['view', 'create', 'edit'] },
     { group: 'Office', actions: ['view'] },
     { group: 'User', actions: ['view', 'create', 'edit'] },
-    { group: 'Report', actions: ['view'] },
+    { group: 'Report', actions: ['view', 'export'] },
     { group: 'Notification', actions: ['view'] },
+    { group: 'FollowUp', actions: ['view'] },
   ],
+
   'Caller': [
+    // Frontline: leads + follow-ups ONLY. Cannot see offices, settings, audit, reports,
+    // payments, students, enrollments, batches, or any HR/finance data.
     { group: 'Dashboard', actions: ['view'] },
     { group: 'Lead', actions: ['view', 'create', 'edit', 'assign'] },
+    { group: 'Appointment', actions: ['view', 'create', 'edit'] },
+    { group: 'Counselling', actions: ['view', 'create'] },  // can record but not edit others'
     { group: 'FollowUp', actions: ['view', 'create', 'edit'] },
     { group: 'Notification', actions: ['view'] },
   ],
+
   'Counsellor': [
+    // Manages counselling-to-enrollment flow
     { group: 'Dashboard', actions: ['view'] },
     { group: 'Lead', actions: ['view', 'edit', 'assign'] },
+    { group: 'Appointment', actions: ['view', 'create', 'edit'] },
+    { group: 'Counselling', actions: ['view', 'create', 'edit'] },
     { group: 'Student', actions: ['view', 'create', 'edit'] },
     { group: 'Enrollment', actions: ['view', 'create', 'edit'] },
     { group: 'Course', actions: ['view'] },
@@ -176,18 +193,24 @@ export const ROLE_PERMISSIONS: Record<string, { group: string; actions: string[]
     { group: 'FollowUp', actions: ['view', 'create', 'edit'] },
     { group: 'Notification', actions: ['view'] },
   ],
+
   'Accounts': [
+    // Owns the finance module
     { group: 'Dashboard', actions: ['view'] },
     { group: 'Student', actions: ['view'] },
     { group: 'Enrollment', actions: ['view', 'edit'] },
     { group: 'Payment', actions: ['view', 'create', 'edit', 'export'] },
     { group: 'EMI', actions: ['view', 'edit'] },
-    { group: 'Invoice', actions: ['view', 'create', 'export'] },
+    { group: 'Invoice', actions: ['view', 'create', 'edit', 'export'] },
     { group: 'Finance', actions: ['view', 'create', 'edit', 'export'] },
+    { group: 'Document', actions: ['view'] },
+    { group: 'FollowUp', actions: ['view', 'create', 'edit'] },
     { group: 'Report', actions: ['view', 'export'] },
     { group: 'Notification', actions: ['view'] },
   ],
+
   'Placement Executive': [
+    // Manages the placement pipeline
     { group: 'Dashboard', actions: ['view'] },
     { group: 'Student', actions: ['view', 'edit'] },
     { group: 'Company', actions: ['view', 'create', 'edit'] },
@@ -198,9 +221,12 @@ export const ROLE_PERMISSIONS: Record<string, { group: string; actions: string[]
     { group: 'FollowUp', actions: ['view', 'create', 'edit'] },
     { group: 'Notification', actions: ['view'] },
   ],
+
   'Trainer': [
+    // Manages batches and attendance for assigned batches only
     { group: 'Dashboard', actions: ['view'] },
     { group: 'Batch', actions: ['view'] },
+    { group: 'Attendance', actions: ['view', 'create', 'edit'] },
     { group: 'Student', actions: ['view'] },
     { group: 'Notification', actions: ['view'] },
   ],

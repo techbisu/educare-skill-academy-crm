@@ -49,6 +49,10 @@ async function GET(req: NextRequest) {
         results = (await db.lead.findMany({ where: { ...scope ? { officeId: scope } : {} }, select: { id: true, studentName: true, leadCode: true, mobile: true }, take: 200, orderBy: { createdAt: 'desc' } })).map(l => ({ value: l.id, label: `${l.studentName} (${l.leadCode})`, mobile: l.mobile }));
         break;
       case 'settings':
+        // Settings options are admin-only. Frontline staff do not need this.
+        if (!user.roles.includes('Super Admin') && !user.roles.includes('Admin')) {
+          return ok([]);
+        }
         results = (await db.setting.findMany()).map(s => ({ key: s.key, value: s.value, group: s.group }));
         break;
       default:

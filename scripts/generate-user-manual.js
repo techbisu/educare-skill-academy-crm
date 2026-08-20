@@ -113,6 +113,75 @@ function shortcutTable(rows) {
   });
 }
 
+// Permission matrix table — 9 columns (module + 8 roles)
+function permissionMatrixTable() {
+  const modules = [
+    'Dashboard', 'Leads', 'Appointments', 'Calls', 'Counselling',
+    'Students', 'Enrollments', 'Courses', 'Batches', 'Attendance',
+    'Payments', 'EMI', 'Invoices', 'Finance (Income/Expense)',
+    'Companies', 'Jobs', 'Placements',
+    'Employees', 'Offices', 'Audit Logs', 'Reports', 'Settings',
+    'Notifications', 'Follow-ups',
+  ];
+  // '✓' = full CRUD, 'view' = read-only, '—' = no access, 'self' = own records only
+  // Order: Super Admin, Admin, HR, Caller, Counsellor, Accounts, Placement Exec, Trainer
+  const matrix = {
+    'Dashboard':       ['✓', '✓', '✓', '✓', '✓', '✓', '✓', '✓'],
+    'Leads':           ['✓', '✓', '—', '✓', 'view/edit', '—', '—', '—'],
+    'Appointments':    ['✓', '✓', '—', '✓', '✓', '—', '—', '—'],
+    'Calls':           ['✓', '✓', '—', '✓', '—', '—', '—', '—'],
+    'Counselling':     ['✓', '✓', '—', 'view/create', '✓', '—', '—', '—'],
+    'Students':        ['✓', '✓', '—', '—', '✓', 'view', 'view/edit', 'view'],
+    'Enrollments':     ['✓', '✓', '—', '—', '✓', 'view/edit', '—', '—'],
+    'Courses':         ['✓', '✓', '—', '—', 'view', '—', '—', '—'],
+    'Batches':         ['✓', '✓', '—', '—', 'view', '—', '—', 'view'],
+    'Attendance':      ['✓', '✓', '—', '—', '—', '—', '—', '✓'],
+    'Payments':        ['✓', '✓', '—', '—', '—', '✓', '—', '—'],
+    'EMI':             ['✓', '✓', '—', '—', '—', 'view/edit', '—', '—'],
+    'Invoices':        ['✓', '✓', '—', '—', '—', '✓', '—', '—'],
+    'Finance (Income/Expense)': ['✓', '✓', '—', '—', '—', '✓', '—', '—'],
+    'Companies':       ['✓', '✓', '—', '—', '—', '—', '✓', '—'],
+    'Jobs':            ['✓', '✓', '—', '—', '—', '—', '✓', '—'],
+    'Placements':      ['✓', '✓', '—', '—', '—', '—', '✓', '—'],
+    'Employees':       ['✓', '✓', '✓', '—', '—', '—', '—', '—'],
+    'Offices':         ['✓', '✓', 'view', '—', '—', '—', '—', '—'],
+    'Audit Logs':      ['✓', '✓', '—', '—', '—', '—', '—', '—'],
+    'Reports':         ['✓', '✓', '✓', '—', '—', '✓', '—', '—'],
+    'Settings':        ['✓', '✓', '—', 'self', 'self', 'self', 'self', 'self'],
+    'Notifications':   ['✓', '✓', '✓', '✓', '✓', '✓', '✓', '✓'],
+    'Follow-ups':      ['✓', '✓', 'view', '✓', '✓', '✓', '✓', '—'],
+  };
+
+  const headers = ['Module', 'Super Admin', 'Admin', 'HR', 'Caller', 'Counsellor', 'Accounts', 'Placement', 'Trainer'];
+  const rows = [headers, ...modules.map(m => [m, ...(matrix[m] || Array(8).fill('—'))])];
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    margins: { top: 60, bottom: 60, left: 80, right: 80 },
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 4, color: c(P.border) },
+      bottom: { style: BorderStyle.SINGLE, size: 4, color: c(P.border) },
+      left: { style: BorderStyle.SINGLE, size: 4, color: c(P.border) },
+      right: { style: BorderStyle.SINGLE, size: 4, color: c(P.border) },
+      insideHorizontal: { style: BorderStyle.SINGLE, size: 2, color: c(P.border) },
+      insideVertical: { style: BorderStyle.SINGLE, size: 2, color: c(P.border) },
+    },
+    rows: rows.map((row, i) => new TableRow({
+      tableHeader: i === 0,
+      cantSplit: true,
+      children: row.map((cell, j) => new TableCell({
+        shading: i === 0 ? { type: ShadingType.CLEAR, fill: c(P.bgLight) } : undefined,
+        children: [new Paragraph({
+          alignment: j === 0 ? AlignmentType.LEFT : AlignmentType.CENTER,
+          spacing: { line: 240 },
+          children: [new TextRun({ text: cell, bold: i === 0, size: 16, color: c(P.body), font: 'Calibri' })],
+        })],
+        width: { size: j === 0 ? 28 : 9, type: WidthType.PERCENTAGE },
+      })),
+    })),
+  });
+}
+
 // ============== Cover ==============
 function buildCover() {
   return [
@@ -330,23 +399,61 @@ function buildBody() {
 
   // 12. Roles & Permissions
   out.push(h1('12. Roles & Permissions'));
-  out.push(body('The CRM implements granular Role-Based Access Control (RBAC). Eight default roles are configured. Permissions are grouped by entity (lead, student, payment, etc.) and action (view, create, edit, delete, assign, export).'));
-  out.push(h3('12.1 Super Admin'));
-  out.push(body('Full system access. Can view, create, edit, and delete all records across all offices. Can manage users, roles, offices, and system settings. Sees "All Offices" by default.'));
-  out.push(h3('12.2 Admin'));
-  out.push(body('Business administration. Same as Super Admin but typically scoped to their office. Can manage employees, users, leads, students, payments, and reports.'));
-  out.push(h3('12.3 HR'));
-  out.push(body('Manages employees, targets, performance. Can view offices and users. Cannot access financial records or leads.'));
-  out.push(h3('12.4 Caller (Telecaller)'));
-  out.push(body('Frontline lead management. Can view, create, edit, and assign leads. Can log calls and schedule follow-ups. Ideal workflow: open the Kanban Pipeline view, drag leads through status columns, log calls inline, and convert qualified leads.'));
-  out.push(h3('12.5 Counsellor'));
+  out.push(body('The CRM implements granular Role-Based Access Control (RBAC). Eight default roles are configured. Permissions follow the principle of least privilege — each role gets only the access it needs. Permissions are grouped by entity (lead, student, payment, etc.) and action (view, create, edit, delete, assign, export).'));
+  out.push(callout('Backend Enforcement', 'Permissions are enforced on the BACKEND, not just hidden in the UI. A Caller who manually crafts an API request to /api/v1/data/office will receive a 403 Forbidden response. The sidebar hides items the user cannot access, but the real security is server-side.'));
+
+  out.push(h3('12.1 Super Admin (174 permissions)'));
+  out.push(body('Full system access. Can view, create, edit, and delete all records across all offices. Can manage users, roles, offices, and system settings. Sees "All Offices" by default. Bypasses all permission checks.'));
+
+  out.push(h3('12.2 Admin (79 permissions)'));
+  out.push(body('Business administration. Same as Super Admin for all CRM/business modules but cannot manage role definitions or user accounts (those are HR/Super Admin only). Can manage employees, offices, leads, students, payments, placements, finance, and reports.'));
+
+  out.push(h3('12.3 HR (12 permissions)'));
+  out.push(body('Manages people, not business data. Can view and manage employees, users, and offices (view only). Can view reports. Cannot access leads, students, payments, or financial records.'));
+  out.push(bullet('Can: Dashboard, Employees (CRUD), Users (CRUD), Offices (view), Reports (view/export), Notifications, Follow-ups (view)'));
+  out.push(bullet('Cannot: Leads, Students, Payments, Finance, Placements, Settings, Audit Logs'));
+
+  out.push(h3('12.4 Caller (14 permissions)'));
+  out.push(body('Frontline lead management. The most restricted role — can ONLY work with leads, calls, follow-ups, appointments, and counselling records they create. Cannot see any other module.'));
+  out.push(bullet('Can: Dashboard, Leads (view/create/edit/assign), Appointments (view/create/edit), Counselling (view/create), Follow-ups (view/create/edit), Notifications, Global Search'));
+  out.push(bullet('Cannot: Students, Enrollments, Courses, Batches, Payments, EMI, Invoices, Income, Expenses, Companies, Jobs, Placements, Employees, Offices, Audit Logs, Reports, Settings (other than their own password)'));
+  out.push(callout('Kanban Workflow', 'The ideal Caller workflow: open Leads → switch to Pipeline view → drag leads through status columns → log calls inline → assign to Counsellor when qualified. Use "Quick Add Lead" for fast capture on the phone.'));
+
+  out.push(h3('12.5 Counsellor (22 permissions)'));
   out.push(body('Manages the counselling-to-enrollment flow. Can view and edit leads, create students, manage enrollments, view courses and batches. Records counselling sessions and converts qualified leads.'));
-  out.push(h3('12.6 Accounts'));
-  out.push(body('Owns the finance module. Can view students and enrollments, create and edit payments, manage EMI schedules, generate invoices, track income and expenses, and export financial reports.'));
-  out.push(h3('12.7 Placement Executive'));
+  out.push(bullet('Can: Dashboard, Leads (view/edit/assign), Appointments, Counselling, Students (CRUD), Enrollments (CRUD), Courses (view), Batches (view), Follow-ups, Notifications'));
+  out.push(bullet('Cannot: Payments, Finance, Companies, Jobs, Placements, Employees, Offices, Audit Logs, Reports, Settings'));
+
+  out.push(h3('12.6 Accounts (25 permissions)'));
+  out.push(body('Owns the finance module. Can view students and enrollments (read-only student, edit enrollment), create and edit payments, manage EMI schedules, generate invoices, track income and expenses, and export financial reports.'));
+  out.push(bullet('Can: Dashboard, Students (view), Enrollments (view/edit), Payments (CRUD+export), EMI (view/edit), Invoices (CRUD+export), Finance (CRUD+export), Documents (view), Follow-ups, Reports (view/export), Notifications'));
+  out.push(bullet('Cannot: Leads, Counselling, Courses, Batches, Companies, Jobs, Placements, Employees, Offices, Audit Logs, Settings'));
+
+  out.push(h3('12.7 Placement Executive (22 permissions)'));
   out.push(body('Manages the placement pipeline. Can view and edit students, companies, job openings, job applications, interviews, and placements. Marks placements as completed after joining verification.'));
-  out.push(h3('12.8 Trainer'));
-  out.push(body('Manages batches and attendance. Sees only the batches assigned to them. Can view students in their batches and record daily attendance.'));
+  out.push(bullet('Can: Dashboard, Students (view/edit), Companies (CRUD), Job Openings (CRUD), Job Applications (CRUD), Interviews (CRUD), Placements (CRUD), Follow-ups, Notifications'));
+  out.push(bullet('Cannot: Leads, Counselling, Courses, Batches, Payments, EMI, Invoices, Finance, Employees, Offices, Audit Logs, Reports, Settings'));
+
+  out.push(h3('12.8 Trainer (7 permissions)'));
+  out.push(body('The most restricted operational role. Manages only batches and attendance for batches assigned to them. Can view students in their batches.'));
+  out.push(bullet('Can: Dashboard, Batches (view), Attendance (view/create/edit), Students (view), Notifications'));
+  out.push(bullet('Cannot: Leads, Counselling, Courses (create/edit), Enrollments, Payments, EMI, Invoices, Finance, Companies, Jobs, Placements, Employees, Offices, Audit Logs, Reports, Settings'));
+
+  out.push(h2('12.9 Permission Matrix Summary'));
+  out.push(body('The table below summarises which modules each role can access. "✓" = full CRUD, "view" = read-only, "—" = no access.'));
+  out.push(permissionMatrixTable());
+
+  out.push(h2('12.10 Audit Trail — Who Did What'));
+  out.push(body('Every sensitive action (create, update, delete, status change, conversion, placement completion) is recorded immutably in the audit log. Each entry includes:'));
+  out.push(bullet('Timestamp (when)'));
+  out.push(bullet('Action user (who — name + email)'));
+  out.push(bullet('Office (which office)'));
+  out.push(bullet('Action type (what — e.g. lead.convert, payment.create)'));
+  out.push(bullet('Entity type and ID (which record)'));
+  out.push(bullet('Old values and new values (what changed)'));
+  out.push(bullet('IP address and user agent (where from)'));
+  out.push(body('To view the audit trail for a specific lead, open the Lead 360° drawer and click the "Audit" tab. Conversion actions are highlighted with a green "Converted" badge so you can quickly see who converted the lead and when.'));
+  out.push(callout('Audit Log Access', 'Only Super Admin, Admin, and HR roles can view the global Audit Logs module. However, the per-lead Audit tab is visible to anyone who has access to the lead (Caller, Counsellor, etc.) — they can see the history of actions performed on leads they manage.'));
 
   // 13. Shortcuts & Tips
   out.push(h1('13. Shortcuts & Tips'));

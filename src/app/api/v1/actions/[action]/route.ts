@@ -3,17 +3,61 @@
 
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUser, applyOfficeScope, officeScope } from '@/lib/auth-utils';
+import { requireUser, applyOfficeScope, officeScope, hasPermission } from '@/lib/auth-utils';
 import { auditLog, createNotification, addLeadActivity } from '@/lib/audit';
 import { generateCode } from '@/lib/code-generator';
 import { ok, fail, unauthorized, forbidden, notFound, serverError } from '@/lib/api';
 import { sendEmiReminder, sendInvoice, dispatchNotification } from '@/lib/notification-providers';
+
+// Action → required permission. 'none' = any authenticated user. Super Admin bypasses.
+const ACTION_PERMISSIONS: Record<string, string> = {
+  'lead.assign': 'lead.assign',
+  'lead.call': 'lead.edit',
+  'lead.followup': 'followup.create',
+  'lead.appointment': 'appointment.create',
+  'lead.counselling': 'counselling.create',
+  'lead.convert': 'lead.edit',
+  'lead.bulk-assign': 'lead.assign',
+  'lead.update-status': 'lead.edit',
+  'lead.quick-create': 'lead.create',
+  'student.enroll': 'enrollment.create',
+  'enrollment.add-payment': 'payment.create',
+  'enrollment.generate-emi': 'emi.edit',
+  'attendance.mark': 'attendance.create',
+  'college-app.add-semester-payment': 'collegeadmission.edit',
+  'placement.complete': 'placement.edit',
+  'job-application.advance': 'jobapplication.edit',
+  'invoice.generate': 'invoice.create',
+  'invoice.send': 'invoice.view',
+  'emi.send-reminder': 'emi.view',
+  'notification.send': 'notification.view',  // will be tightened to Admin+ below
+  'user.change-password': 'none',           // own password only
+  'notification.mark-read': 'none',          // own notifications only
+  'duplicate-check': 'lead.view',
+};
 
 async function handler(req: NextRequest, ctx: { params: Promise<{ action: string }> }) {
   try {
     const user = await requireUser();
     const { action } = await ctx.params;
     const body = await req.json().catch(() => ({}));
+
+    // ===== Permission enforcement =====
+    if (!user.roles.includes('Super Admin')) {
+      const requiredPerm = ACTION_PERMISSIONS[action];
+      if (requiredPerm && requiredPerm !== 'none') {
+        // Special tightening: notification.send (broadcast) is admin-only
+        if (action === 'notification.send' && !user.roles.includes('Admin')) {
+          return forbidden('Only administrators can broadcast notifications');
+        }
+        if (!hasPermission(user, requiredPerm)) {
+          return forbidden(`Missing permission: ${requiredPerm}`);
+        }
+      } else if (!requiredPerm) {
+        // Unknown actions are blocked by default
+        return forbidden(`Action not permitted: ${action}`);
+      }
+    }
 
     switch (action) {
       case 'lead.assign': return await leadAssign(user, body);

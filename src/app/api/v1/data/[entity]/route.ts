@@ -15,6 +15,7 @@ import { applyOfficeScope, officeScope, requireUser, hasPermission } from '@/lib
 import { auditLog } from '@/lib/audit';
 import { generateCode } from '@/lib/code-generator';
 import { ok, fail, unauthorized, forbidden, notFound, serverError, parsePagination } from '@/lib/api';
+import { getPermissionGroup, methodToAction } from '@/lib/entity-permissions';
 
 // Mapping: entity -> code field name + counter name
 const CODE_FIELDS: Record<string, { field: string; counter: Parameters<typeof generateCode>[0] }> = {
@@ -41,15 +42,51 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
     const model = getModel(entityName);
     const cfg = ENTITY_MAP[entityName];
 
+    // ===== Permission enforcement =====
+    // Super Admin bypasses all checks. Otherwise the user must have the required
+    // permission: '<group>.<action>' where group comes from ENTITY_PERMISSION_GROUP
+    // and action comes from the HTTP method.
+    if (!user.roles.includes('Super Admin')) {
+      const group = getPermissionGroup(entityName);
+      if (group) {
+        const action = methodToAction(req.method || 'GET');
+        const permission = `${group.toLowerCase()}.${action}`;
+        // 'edit' also requires 'view' implicit, but we check the exact action.
+        // For audit logs we also accept 'auditlog.view' for GET only.
+        if (!hasPermission(user, permission)) {
+          // Special case: notification list is allowed for any authenticated user
+          // (they will only see their own — see below).
+          if (!(entityName === 'notification' && action === 'view')) {
+            return forbidden(`Missing permission: ${permission}`);
+          }
+        }
+      } else {
+        // Entities not in the map default to admin-only
+        if (!user.roles.includes('Admin')) {
+          return forbidden(`Access to ${entityName} is restricted to administrators`);
+        }
+      }
+    }
+
+    // Special scoping for notification: users only see their own notifications
+    const isPersonalEntity = entityName === 'notification';
+
     if (req.method === 'GET') {
       if (id) {
         const rec = await model.findUnique({ where: { id }, include: cfg.include });
         if (!rec) return notFound();
+        // For personal entities, ensure the user owns the record
+        if (isPersonalEntity && rec.userId !== user.id && !user.roles.includes('Super Admin')) {
+          return forbidden();
+        }
         return ok(rec);
       }
       const { page, pageSize, search, sortBy, sortDir, skip, take } = parsePagination(req);
       const url = new URL(req.url);
-      const where: any = applyOfficeScope(user, {});
+      // Personal entities are always scoped to the current user (except Super Admin)
+      const where: any = isPersonalEntity && !user.roles.includes('Super Admin')
+        ? { userId: user.id }
+        : applyOfficeScope(user, {});
       if (search && cfg.searchable.length) {
         where.OR = cfg.searchable.map((field: string) => ({ [field]: { contains: search } }));
       }

@@ -17,7 +17,12 @@ export function SettingsView({ user }: { user: any }) {
   const [saving, setSaving] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
+  // Only Admin/Super Admin can edit org/GST settings. Everyone else sees a
+  // read-only view OR is restricted to the Account tab only.
+  const canEditSettings = user.roles.includes('Super Admin') || user.roles.includes('Admin');
+
   const load = async () => {
+    if (!canEditSettings) return; // skip fetching settings for non-admins
     const res = await api.options('settings');
     if (res.success && res.data) {
       const map: Record<string, string> = {};
@@ -56,12 +61,16 @@ export function SettingsView({ user }: { user: any }) {
 
   return (
     <div>
-      <PageHeader title="Settings" description="Configure GST rates, organization details, and account" icon={<SettingsIcon className="h-5 w-5" />} />
+      <PageHeader
+        title={canEditSettings ? 'Settings' : 'My Account'}
+        description={canEditSettings ? 'Configure GST rates, organization details, and account' : 'Manage your password and view your account info'}
+        icon={<SettingsIcon className="h-5 w-5" />}
+      />
 
-      <Tabs defaultValue="organization">
+      <Tabs defaultValue={canEditSettings ? 'organization' : 'account'}>
         <TabsList>
-          <TabsTrigger value="organization">Organization</TabsTrigger>
-          <TabsTrigger value="gst">GST Configuration</TabsTrigger>
+          {canEditSettings && <TabsTrigger value="organization">Organization</TabsTrigger>}
+          {canEditSettings && <TabsTrigger value="gst">GST Configuration</TabsTrigger>}
           <TabsTrigger value="account">Account & Security</TabsTrigger>
         </TabsList>
 

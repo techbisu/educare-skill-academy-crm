@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server';
 import { ENTITY_MAP, getModel, type EntityName } from '@/lib/entity-map';
-import { officeScope, requireUser } from '@/lib/auth-utils';
+import { officeScope, requireUser, hasPermission } from '@/lib/auth-utils';
 import { ok, forbidden, notFound, serverError, unauthorized } from '@/lib/api';
 import { auditLog } from '@/lib/audit';
+import { getPermissionGroup, methodToAction } from '@/lib/entity-permissions';
 import { db } from '@/lib/db';
 
 // GET/PUT/DELETE for /api/v1/data/[entity]/[id]
@@ -15,8 +16,32 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
     const model = getModel(entityName);
     const cfg = ENTITY_MAP[entityName];
 
+    // ===== Permission enforcement =====
+    if (!user.roles.includes('Super Admin')) {
+      const group = getPermissionGroup(entityName);
+      const action = methodToAction(req.method || 'GET');
+      if (group) {
+        const permission = `${group.toLowerCase()}.${action}`;
+        if (!hasPermission(user, permission)) {
+          // Special case: own notification can be viewed by anyone
+          if (!(entityName === 'notification' && action === 'view')) {
+            return forbidden(`Missing permission: ${permission}`);
+          }
+        }
+      } else {
+        if (!user.roles.includes('Admin')) {
+          return forbidden(`Access to ${entityName} is restricted to administrators`);
+        }
+      }
+    }
+
     const existing = await model.findUnique({ where: { id } });
     if (!existing) return notFound();
+
+    // For personal entities (notification), ensure ownership
+    if (entityName === 'notification' && existing.userId !== user.id && !user.roles.includes('Super Admin')) {
+      return forbidden();
+    }
 
     if (req.method === 'GET') {
       if (existing.officeId) {

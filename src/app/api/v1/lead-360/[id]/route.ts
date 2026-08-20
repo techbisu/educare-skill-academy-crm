@@ -25,7 +25,16 @@ async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
     if (!lead) return notFound('Lead not found');
     const scope = officeScope(user);
     if (scope && lead.officeId !== scope) return forbidden();
-    return ok(lead);
+
+    // Fetch audit log entries for this lead to show who did what (e.g. who converted it)
+    const auditEntries = await db.auditLog.findMany({
+      where: { entityType: 'Lead', entityId: id },
+      include: { actionUser: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return ok({ ...lead, auditEntries });
   } catch (e: any) {
     if (e?.message === 'Unauthorized') return unauthorized();
     return serverError(e?.message);
