@@ -421,63 +421,118 @@ export function CollegeApplicationsView() {
 }
 
 export function IncomeView() {
+  const [summary, setSummary] = useState<any>(null);
+
+  useEffect(() => {
+    api.dashboard().then(res => {
+      if (res.success && res.data?.finance) setSummary(res.data.finance);
+    });
+  }, []);
+
   return (
-    <GenericListView
-      entity="income"
-      title="Income Records"
-      description="Track all income by category and office"
-      icon={require('lucide-react').Coins}
-      defaultSort="incomeDate"
-      columns={[
-        { key: 'incomeCode', header: 'Code', cell: r => <span className="font-mono text-xs">{r.incomeCode}</span> },
-        { key: 'category', header: 'Category', cell: r => <StatusBadge status={r.category} /> },
-        { key: 'amount', header: 'Amount', cell: r => <span className="font-semibold text-emerald-700">{formatINR(r.amount)}</span> },
-        { key: 'incomeDate', header: 'Date', cell: r => <span className="text-xs">{formatDate(r.incomeDate)}</span> },
-        { key: 'office', header: 'Office', cell: r => <span className="text-xs">{r.office?.officeName}</span> },
-        { key: 'reference', header: 'Reference', cell: r => <span className="text-xs font-mono">{r.reference || '—'}</span> },
-      ]}
-      createFields={[
-        { key: 'category', label: 'Category', type: 'select', options: INCOME_CATEGORIES.map(c => ({ value: c, label: c })), colSpan: 2 },
-        { key: 'amount', label: 'Amount (₹)', type: 'number', required: true },
-        { key: 'incomeDate', label: 'Date', type: 'date' },
-        { key: 'reference', label: 'Reference', type: 'text' },
-        { key: 'remarks', label: 'Remarks', type: 'textarea', colSpan: 2 },
-      ]}
-      filterFields={[
-        { key: 'category', label: 'Categories', options: INCOME_CATEGORIES.map(c => ({ value: c, label: c })) },
-      ]}
-    />
+    <div>
+      {summary && (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mb-4">
+          <FinanceCard label="Total Revenue" value={summary.totalRevenue} color="emerald" />
+          <FinanceCard label="Total Collection" value={summary.totalCollection} color="blue" />
+          <FinanceCard label="Total Expense" value={summary.totalExpense} color="red" />
+          <FinanceCard label="Net Profit" value={summary.netProfit} color="amber" />
+        </div>
+      )}
+      <GenericListView
+        entity="income"
+        title="Income Records"
+        description="Auto-generated when payments are received — also supports manual income entry"
+        icon={require('lucide-react').Coins}
+        defaultSort="incomeDate"
+        columns={[
+          { key: 'incomeCode', header: 'Code', cell: r => <span className="font-mono text-xs">{r.incomeCode}</span> },
+          { key: 'category', header: 'Category', cell: r => <StatusBadge status={r.category} /> },
+          { key: 'amount', header: 'Amount', cell: r => <span className="font-semibold text-emerald-700">{formatINR(r.amount)}</span> },
+          { key: 'incomeDate', header: 'Date', cell: r => <span className="text-xs">{formatDate(r.incomeDate)}</span> },
+          { key: 'office', header: 'Office', cell: r => <span className="text-xs">{r.office?.officeName}</span> },
+          { key: 'source', header: 'Source', cell: r => <span className="text-xs">{r.source || '—'}</span> },
+          { key: 'reference', header: 'Reference', cell: r => <span className="text-xs font-mono">{r.reference || '—'}</span> },
+        ]}
+        createFields={[
+          { key: 'category', label: 'Category', type: 'select', options: INCOME_CATEGORIES.map(c => ({ value: c, label: c })), colSpan: 2 },
+          { key: 'amount', label: 'Amount (₹)', type: 'number', required: true },
+          { key: 'incomeDate', label: 'Date', type: 'date' },
+          { key: 'reference', label: 'Reference', type: 'text' },
+          { key: 'source', label: 'Source', type: 'text' },
+          { key: 'remarks', label: 'Remarks', type: 'textarea', colSpan: 2 },
+        ]}
+        filterFields={[
+          { key: 'category', label: 'Categories', options: INCOME_CATEGORIES.map(c => ({ value: c, label: c })) },
+        ]}
+      />
+    </div>
   );
 }
 
 export function ExpensesView() {
+  const [summary, setSummary] = useState<any>(null);
+
+  useEffect(() => {
+    api.dashboard().then(res => {
+      if (res.success && res.data?.finance) setSummary(res.data.finance);
+    });
+  }, []);
+
   return (
-    <GenericListView
-      entity="expense"
-      title="Expense Records"
-      description="Track all expenses by category and office"
-      icon={require('lucide-react').ReceiptIndianRupee}
-      defaultSort="expenseDate"
-      columns={[
-        { key: 'expenseCode', header: 'Code', cell: r => <span className="font-mono text-xs">{r.expenseCode}</span> },
-        { key: 'category', header: 'Category', cell: r => <StatusBadge status={r.category} /> },
-        { key: 'amount', header: 'Amount', cell: r => <span className="font-semibold text-red-700">{formatINR(r.amount)}</span> },
-        { key: 'expenseDate', header: 'Date', cell: r => <span className="text-xs">{formatDate(r.expenseDate)}</span> },
-        { key: 'office', header: 'Office', cell: r => <span className="text-xs">{r.office?.officeName}</span> },
-        { key: 'vendor', header: 'Vendor', cell: r => <span className="text-xs">{r.vendor || '—'}</span> },
-      ]}
-      createFields={[
-        { key: 'category', label: 'Category', type: 'select', options: EXPENSE_CATEGORIES.map(c => ({ value: c, label: c })), colSpan: 2 },
-        { key: 'amount', label: 'Amount (₹)', type: 'number', required: true },
-        { key: 'expenseDate', label: 'Date', type: 'date' },
-        { key: 'vendor', label: 'Vendor', type: 'text' },
-        { key: 'reference', label: 'Reference', type: 'text' },
-        { key: 'remarks', label: 'Remarks', type: 'textarea', colSpan: 2 },
-      ]}
-      filterFields={[
-        { key: 'category', label: 'Categories', options: EXPENSE_CATEGORIES.map(c => ({ value: c, label: c })) },
-      ]}
-    />
+    <div>
+      {summary && (
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mb-4">
+          <FinanceCard label="Total Expense" value={summary.totalExpense} color="red" />
+          <FinanceCard label="Total Revenue" value={summary.totalRevenue} color="emerald" />
+          <FinanceCard label="Net Profit" value={summary.netProfit} color="amber" />
+          <FinanceCard label="Outstanding" value={summary.totalOutstanding} color="orange" />
+        </div>
+      )}
+      <GenericListView
+        entity="expense"
+        title="Expense Records"
+        description="Track all expenses by category and office — manual entry supported"
+        icon={require('lucide-react').ReceiptIndianRupee}
+        defaultSort="expenseDate"
+        columns={[
+          { key: 'expenseCode', header: 'Code', cell: r => <span className="font-mono text-xs">{r.expenseCode}</span> },
+          { key: 'category', header: 'Category', cell: r => <StatusBadge status={r.category} /> },
+          { key: 'amount', header: 'Amount', cell: r => <span className="font-semibold text-red-700">{formatINR(r.amount)}</span> },
+          { key: 'expenseDate', header: 'Date', cell: r => <span className="text-xs">{formatDate(r.expenseDate)}</span> },
+          { key: 'office', header: 'Office', cell: r => <span className="text-xs">{r.office?.officeName}</span> },
+          { key: 'vendor', header: 'Vendor', cell: r => <span className="text-xs">{r.vendor || '—'}</span> },
+        ]}
+        createFields={[
+          { key: 'category', label: 'Category', type: 'select', options: EXPENSE_CATEGORIES.map(c => ({ value: c, label: c })), colSpan: 2 },
+          { key: 'amount', label: 'Amount (₹)', type: 'number', required: true },
+          { key: 'expenseDate', label: 'Date', type: 'date' },
+          { key: 'vendor', label: 'Vendor', type: 'text' },
+          { key: 'reference', label: 'Reference', type: 'text' },
+          { key: 'remarks', label: 'Remarks', type: 'textarea', colSpan: 2 },
+        ]}
+        filterFields={[
+          { key: 'category', label: 'Categories', options: EXPENSE_CATEGORIES.map(c => ({ value: c, label: c })) },
+        ]}
+      />
+    </div>
+  );
+}
+
+// Finance summary card component
+function FinanceCard({ label, value, color }: { label: string; value: number; color: 'emerald' | 'red' | 'amber' | 'blue' | 'orange' }) {
+  const colorMap = {
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    red: 'bg-red-50 text-red-700 border-red-200',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200',
+    blue: 'bg-blue-50 text-blue-700 border-blue-200',
+    orange: 'bg-orange-50 text-orange-700 border-orange-200',
+  };
+  return (
+    <div className={`rounded-lg border p-4 ${colorMap[color]}`}>
+      <div className="text-xs uppercase tracking-wide font-medium opacity-80">{label}</div>
+      <div className="text-2xl font-bold mt-1">{formatINR(value)}</div>
+    </div>
   );
 }
 

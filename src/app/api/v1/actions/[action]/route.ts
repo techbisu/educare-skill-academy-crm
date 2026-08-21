@@ -368,7 +368,7 @@ async function studentEnroll(user: any, body: any) {
 async function enrollmentAddPayment(user: any, body: any) {
   const { enrollmentId, amount, paymentMode, referenceNo, paymentDate, remarks } = body;
   if (!enrollmentId || !amount || !paymentMode) return fail('enrollmentId, amount, paymentMode required', 400);
-  const enr = await db.enrollment.findUnique({ where: { id: enrollmentId } });
+  const enr = await db.enrollment.findUnique({ where: { id: enrollmentId }, include: { course: true, student: true } });
   if (!enr) return notFound('Enrollment not found');
   const scope = officeScope(user);
   if (scope && enr.officeId !== scope) return forbidden();
@@ -390,6 +390,42 @@ async function enrollmentAddPayment(user: any, body: any) {
     },
   });
   await recomputeEnrollmentFinancials(enr.id);
+
+  // ===== Auto-create Income record linked to this payment =====
+  // Category is derived from the course category (B.Tech → Course Fee, ITI → Course Fee, etc.)
+  const incomeCode = await generateCode('income');
+  const incomeCategory = deriveIncomeCategory(enr.course?.category, enr.course?.courseName);
+  const income = await db.income.create({
+    data: {
+      incomeCode,
+      category: incomeCategory,
+      amount,
+      incomeDate: paymentDate ? new Date(paymentDate) : new Date(),
+      officeId: enr.officeId,
+      source: `Payment ${receiptNo} — ${enr.enrollmentCode}`,
+      reference: receiptNo,
+      remarks: `Auto-generated from payment by ${user.name} for ${enr.student?.name} — ${enr.course?.courseName || ''}`,
+    },
+  });
+
+  // ===== Auto-update linked Invoice payment status =====
+  if (enr.invoices?.length || true) {
+    // Find any invoices linked to this enrollment
+    const invoices = await db.invoice.findMany({ where: { enrollmentId: enr.id } });
+    for (const inv of invoices) {
+      const invPayments = await db.payment.aggregate({
+        where: { enrollmentId: enr.id, status: 'Valid' },
+        _sum: { amount: true },
+      });
+      const totalPaid = invPayments._sum.amount ?? 0;
+      const newStatus = totalPaid >= inv.totalAmount ? 'Paid' : totalPaid > 0 ? 'Partial' : 'Unpaid';
+      if (inv.paymentStatus !== newStatus) {
+        await db.invoice.update({ where: { id: inv.id }, data: { paymentStatus: newStatus } });
+      }
+    }
+  }
+
+  // ===== Auto-allocate to EMIs (FIFO) =====
   const emis = await db.emiSchedule.findMany({ where: { enrollmentId: enr.id, status: { in: ['Upcoming','Due Today','Overdue','Partially Paid'] } }, orderBy: { installmentNumber: 'asc' } });
   let remaining = amount;
   for (const emi of emis) {
@@ -401,8 +437,19 @@ async function enrollmentAddPayment(user: any, body: any) {
     });
     remaining -= pay;
   }
-  await auditLog({ actionUserId: user.id, officeId: enr.officeId, action: 'payment.create', entityType: 'Payment', entityId: payment.id, newValues: payment });
-  return ok(payment, 'Payment recorded and financials updated');
+  await auditLog({ actionUserId: user.id, officeId: enr.officeId, action: 'payment.create', entityType: 'Payment', entityId: payment.id, newValues: { payment, autoIncome: income.incomeCode } });
+  return ok(payment, `Payment recorded — financials, income (${incomeCode}), EMI, and invoices auto-updated`);
+}
+
+// Derive income category from course category
+function deriveIncomeCategory(courseCategory?: string | null, courseName?: string | null): string {
+  if (!courseCategory) return 'Course Fee';
+  const cat = courseCategory.toLowerCase();
+  if (cat.includes('b.tech') || cat.includes('diploma')) return 'Course Fee';
+  if (cat.includes('iti')) return 'Course Fee';
+  if (cat.includes('coaching')) return 'Coaching Fee';
+  if (cat.includes('internship')) return 'Internship Fee';
+  return 'Course Fee';
 }
 
 async function recomputeEnrollmentFinancials(enrollmentId: string) {
