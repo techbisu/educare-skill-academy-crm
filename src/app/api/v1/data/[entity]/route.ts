@@ -86,7 +86,13 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       interview: 'student',   // Interview → Student.officeId (via jobApplication)
       offer: 'student',       // Offer → Student.officeId (via jobApplication)
       semesterPayment: 'application', // SemesterPayment → CollegeApplication.officeId
+      employeeTarget: 'employee',     // EmployeeTarget → Employee.officeId
+      incentiveCalculation: 'employee', // IncentiveCalculation → Employee.officeId
     };
+
+    // Entities that are themselves the office-scoped entity (no parent relation).
+    // For these, non-admins should only see their own office, filtered by `id` not `officeId`.
+    const SELF_SCOPED_ENTITIES = new Set(['office']);
 
     // Build the office-scoped where clause
     function buildScopedWhere(): any {
@@ -98,6 +104,10 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       const scope = officeScope(user);
       if (!scope) return {}; // Super Admin / Admin sees all
 
+      // Self-scoped entities (e.g., Office): filter by `id` (the office IS the record)
+      if (SELF_SCOPED_ENTITIES.has(entityName as string)) {
+        return { id: scope };
+      }
       // Check if this entity has a direct officeId
       const hasDirectOfficeId = !RELATION_SCOPE[entityName as string];
       if (hasDirectOfficeId) {
@@ -129,8 +139,8 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       }
       // Filter keys — but skip `officeId` for entities that use relation scoping
       const FILTER_KEYS = ['status','source','leadType','paymentStatus','paymentMode','gender','category','mode','result','priority','entityType','assignedToId','assignedEmployeeId','studentId','leadId','enrollmentId','batchId','courseId','collegeId','jobId','companyId','placementExecutiveId','employeeId','period','ruleType','basis','documentType','isRead','type','verificationDate'];
-      // Add officeId filter only for entities that have it directly
-      if (!RELATION_SCOPE[entityName as string]) {
+      // Add officeId filter only for entities that have it directly (not self-scoped, not relation-scoped)
+      if (!RELATION_SCOPE[entityName as string] && !SELF_SCOPED_ENTITIES.has(entityName as string)) {
         FILTER_KEYS.push('officeId');
       }
       for (const key of FILTER_KEYS) {

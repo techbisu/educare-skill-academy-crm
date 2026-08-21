@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LucideIcon, Bell, Loader2, Send } from 'lucide-react';
+import { LucideIcon, Bell, Loader2, Send, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   COURSE_CATEGORIES, BATCH_MODES, BATCH_STATUSES, PAYMENT_MODES, INCOME_CATEGORIES, EXPENSE_CATEGORIES,
@@ -40,17 +40,23 @@ export function GenericListView({
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     const params: Record<string, any> = {
       page: table.page, pageSize: table.pageSize, search: table.search,
       sortBy: table.sortBy, sortDir: table.sortDir,
     };
     Object.entries(filters).forEach(([k, v]) => { if (v) params[k] = v; });
     const res = await api.list(entity, params);
-    if (res.success && res.data) {
+    if (res.success) {
       setData(res.data);
       if (res.meta) setMeta({ total: res.meta.total, totalPages: res.meta.totalPages });
+    } else {
+      setData([]);
+      setMeta({ total: 0, totalPages: 0 });
+      setError(res.message || 'Failed to load data');
     }
   }, [entity, table.page, table.pageSize, table.search, table.sortBy, table.sortDir, filters]);
 
@@ -73,6 +79,20 @@ export function GenericListView({
           {allowCreate && createFields && <Button size="sm" onClick={() => setCreateOpen(true)}>New</Button>}
         </>}
       />
+      {error && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-medium text-amber-900">Permission Required</div>
+              <div className="text-sm text-amber-700 mt-1">{error}</div>
+              <div className="text-xs text-amber-600 mt-2">
+                You don't have permission to access this module. Contact your administrator if you believe this is an error.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <DataTable
         data={data}
         columns={columns}

@@ -15,7 +15,7 @@ import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor,
   useDraggable, useDroppable, useSensor, useSensors,
 } from '@dnd-kit/core';
-import { Plus, Phone, GripVertical, User, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { Plus, Phone, GripVertical, User, RefreshCw, LayoutGrid, List, ShieldAlert } from 'lucide-react';
 import { formatINR, formatDate } from '@/components/crm/layout';
 
 // Kanban-style lead board with drag-and-drop status transitions
@@ -48,6 +48,7 @@ export function LeadKanbanView({ user, onViewLead }: { user: any; onViewLead: (l
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [callModalLead, setCallModalLead] = useState<Lead | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -55,8 +56,14 @@ export function LeadKanbanView({ user, onViewLead }: { user: any; onViewLead: (l
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const res = await api.list('lead', { pageSize: 200, sortBy: 'createdAt', sortDir: 'desc' });
-    if (res.success && res.data) setLeads(res.data);
+    if (res.success && res.data) {
+      setLeads(res.data);
+    } else {
+      setLeads([]);
+      setError(res.message || 'Failed to load leads');
+    }
     setLoading(false);
   }, []);
 
@@ -125,6 +132,21 @@ export function LeadKanbanView({ user, onViewLead }: { user: any; onViewLead: (l
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-medium text-amber-900">Permission Required</div>
+              <div className="text-sm text-amber-700 mt-1">{error}</div>
+              <div className="text-xs text-amber-600 mt-2">
+                You don't have permission to access leads. Contact your administrator if you believe this is an error.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {/* Horizontal scroll container for columns */}
