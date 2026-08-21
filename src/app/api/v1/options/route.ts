@@ -2,7 +2,7 @@
 // Returns simple lists for use in dropdowns / selects on the client.
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUser, applyOfficeScope } from '@/lib/auth-utils';
+import { requireUser, officeScope } from '@/lib/auth-utils';
 import { ok, unauthorized, serverError } from '@/lib/api';
 
 async function GET(req: NextRequest) {
@@ -11,7 +11,8 @@ async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const type = url.searchParams.get('type');
     if (!type) return ok([]);
-    const scope = applyOfficeScope(user, {});
+    // officeScope returns a string (officeId) or null (for Super Admin/Admin)
+    const scope = officeScope(user);
     let results: any[] = [];
 
     switch (type) {

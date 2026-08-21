@@ -71,6 +71,43 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
     // Special scoping for notification: users only see their own notifications
     const isPersonalEntity = entityName === 'notification';
 
+    // Entities that don't have a direct `officeId` field — they need to be
+    // filtered through their relation to an entity that DOES have officeId.
+    // Map: entity → relation path to officeId
+    const RELATION_SCOPE: Record<string, string> = {
+      call: 'lead',           // Call → Lead.officeId
+      followUp: 'lead',       // FollowUp → Lead.officeId (primary; also has student/enrollment)
+      counselling: 'lead',    // CounsellingSession → Lead.officeId (or Student)
+      leadActivity: 'lead',   // LeadActivity → Lead.officeId
+      leadAssignment: 'lead', // LeadAssignment → Lead.officeId
+      attendance: 'batch',    // Attendance → Batch.officeId
+      batchStudent: 'batch',  // BatchStudent → Batch.officeId
+      studentDocument: 'student', // StudentDocument → Student.officeId
+      interview: 'student',   // Interview → Student.officeId (via jobApplication)
+      offer: 'student',       // Offer → Student.officeId (via jobApplication)
+      semesterPayment: 'application', // SemesterPayment → CollegeApplication.officeId
+    };
+
+    // Build the office-scoped where clause
+    function buildScopedWhere(): any {
+      // Personal entities: scope to current user
+      if (isPersonalEntity && !user.roles.includes('Super Admin')) {
+        return { userId: user.id };
+      }
+      // Get the office scope (string or null for admins)
+      const scope = officeScope(user);
+      if (!scope) return {}; // Super Admin / Admin sees all
+
+      // Check if this entity has a direct officeId
+      const hasDirectOfficeId = !RELATION_SCOPE[entityName as string];
+      if (hasDirectOfficeId) {
+        return { officeId: scope };
+      }
+      // Filter through the relation
+      const relationKey = RELATION_SCOPE[entityName as string];
+      return { [relationKey]: { officeId: scope } };
+    }
+
     if (req.method === 'GET') {
       if (id) {
         const rec = await model.findUnique({ where: { id }, include: cfg.include });
@@ -86,14 +123,16 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       // don't have a `createdAt` field, so defaulting to createdAt breaks).
       const sortBy = rawSortBy === 'createdAt' ? (cfg.orderBy || 'createdAt') : rawSortBy;
       const url = new URL(req.url);
-      // Personal entities are always scoped to the current user (except Super Admin)
-      const where: any = isPersonalEntity && !user.roles.includes('Super Admin')
-        ? { userId: user.id }
-        : applyOfficeScope(user, {});
+      const where: any = buildScopedWhere();
       if (search && cfg.searchable.length) {
         where.OR = cfg.searchable.map((field: string) => ({ [field]: { contains: search } }));
       }
-      const FILTER_KEYS = ['status','officeId','source','leadType','paymentStatus','paymentMode','gender','category','mode','result','priority','entityType','assignedToId','assignedEmployeeId','studentId','leadId','enrollmentId','batchId','courseId','collegeId','jobId','companyId','placementExecutiveId','employeeId','period','ruleType','basis','documentType','isRead','type','verificationDate'];
+      // Filter keys — but skip `officeId` for entities that use relation scoping
+      const FILTER_KEYS = ['status','source','leadType','paymentStatus','paymentMode','gender','category','mode','result','priority','entityType','assignedToId','assignedEmployeeId','studentId','leadId','enrollmentId','batchId','courseId','collegeId','jobId','companyId','placementExecutiveId','employeeId','period','ruleType','basis','documentType','isRead','type','verificationDate'];
+      // Add officeId filter only for entities that have it directly
+      if (!RELATION_SCOPE[entityName as string]) {
+        FILTER_KEYS.push('officeId');
+      }
       for (const key of FILTER_KEYS) {
         const v = url.searchParams.get(key);
         if (v) where[key] = v;

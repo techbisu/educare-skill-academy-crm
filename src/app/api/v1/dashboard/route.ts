@@ -3,7 +3,7 @@
 
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
-import { requireUser, officeScope, applyOfficeScope } from '@/lib/auth-utils';
+import { requireUser, officeScope } from '@/lib/auth-utils';
 import { ok, serverError, unauthorized } from '@/lib/api';
 
 async function GET(req: NextRequest) {
@@ -13,6 +13,8 @@ async function GET(req: NextRequest) {
     const officeFilter = url.searchParams.get('officeId');
     const scope = officeScope(user);
     const officeId = officeFilter || scope || undefined;
+    // Helper: build where clause with officeId for entities that have it
+    const ow = (extra: any = {}) => ({ ...extra, ...(officeId ? { officeId } : {}) });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -24,20 +26,22 @@ async function GET(req: NextRequest) {
       totalLeads, todayCalls, todayFollowups, todayEnrollments,
       todayCollection, todayDue, activeStudents, placementPending
     ] = await Promise.all([
-      db.lead.count({ where: applyOfficeScope(user, officeId ? { officeId } : {}) }),
-      db.call.count({ where: { callDate: { gte: today, lt: todayEnd }, lead: { officeId: officeId ? officeId : undefined } } }),
-      db.followUp.count({ where: { dueDate: { gte: today, lt: todayEnd }, status: 'Pending' } }),
-      db.enrollment.count({ where: { enrollmentDate: { gte: today, lt: todayEnd }, officeId: officeId ? officeId : undefined } }),
-      db.payment.aggregate({ where: { paymentDate: { gte: today, lt: todayEnd }, status: 'Valid', officeId: officeId ? officeId : undefined }, _sum: { amount: true } }),
-      db.enrollment.aggregate({ where: { dueAmount: { gt: 0 }, officeId: officeId ? officeId : undefined }, _sum: { dueAmount: true } }),
-      db.student.count({ where: { status: 'Active', officeId: officeId ? officeId : undefined } }),
+      db.lead.count({ where: ow() }),
+      // Call has no officeId — filter via lead relation
+      db.call.count({ where: { callDate: { gte: today, lt: todayEnd }, ...(officeId ? { lead: { officeId } } : {}) } }),
+      // FollowUp has no officeId — filter via lead relation
+      db.followUp.count({ where: { dueDate: { gte: today, lt: todayEnd }, status: 'Pending', ...(officeId ? { lead: { officeId } } : {}) } }),
+      db.enrollment.count({ where: { enrollmentDate: { gte: today, lt: todayEnd }, ...ow() } }),
+      db.payment.aggregate({ where: { paymentDate: { gte: today, lt: todayEnd }, status: 'Valid', ...ow() }, _sum: { amount: true } }),
+      db.enrollment.aggregate({ where: { dueAmount: { gt: 0 }, ...ow() }, _sum: { dueAmount: true } }),
+      db.student.count({ where: { status: 'Active', ...ow() } }),
       db.placement.count({ where: { status: { notIn: ['Placement Completed', 'Rejected', 'Not Interested'] } } }),
     ]);
 
     // ===== Lead source breakdown =====
     const leadSourcesRaw = await db.lead.groupBy({
       by: ['source'],
-      where: applyOfficeScope(user, officeId ? { officeId } : {}),
+      where: ow(),
       _count: true,
     });
     const leadSources = leadSourcesRaw.map(s => ({ name: s.source, value: s._count }));
@@ -45,7 +49,7 @@ async function GET(req: NextRequest) {
     // ===== Lead status funnel =====
     const leadStatusRaw = await db.lead.groupBy({
       by: ['status'],
-      where: applyOfficeScope(user, officeId ? { officeId } : {}),
+      where: ow(),
       _count: true,
     });
     const leadStatusFunnel = leadStatusRaw.map(s => ({ name: s.status, value: s._count }));
@@ -114,7 +118,7 @@ async function GET(req: NextRequest) {
     // ===== Recent activity tables =====
     const [todayFollowupsList, recentEnrollments, recentPayments, overdueEmi, pendingPlacements, topEmployees] = await Promise.all([
       db.followUp.findMany({
-        where: { dueDate: { gte: today, lt: todayEnd }, status: 'Pending' },
+        where: { dueDate: { gte: today, lt: todayEnd }, status: 'Pending', ...(officeId ? { lead: { officeId } } : {}) },
         include: { lead: { select: { studentName: true, leadCode: true } }, assignedTo: { select: { name: true } }, student: { select: { name: true, studentCode: true } } },
         take: 10, orderBy: { dueDate: 'asc' },
       }),
@@ -139,7 +143,7 @@ async function GET(req: NextRequest) {
         take: 10, orderBy: { createdAt: 'desc' },
       }),
       db.employee.findMany({
-        where: applyOfficeScope(user, {}),
+        where: ow(),
         include: { _count: { select: { calls: true, enrollments: true, payments: true } } },
         take: 5,
       }),
