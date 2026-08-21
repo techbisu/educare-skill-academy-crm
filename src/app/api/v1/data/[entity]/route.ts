@@ -83,8 +83,10 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       attendance: 'batch',    // Attendance → Batch.officeId
       batchStudent: 'batch',  // BatchStudent → Batch.officeId
       studentDocument: 'student', // StudentDocument → Student.officeId
-      interview: 'student',   // Interview → Student.officeId (via jobApplication)
-      offer: 'student',       // Offer → Student.officeId (via jobApplication)
+      jobApplication: 'student',  // JobApplication → Student.officeId
+      placement: 'student',       // Placement → Student.officeId
+      interview: 'student',       // Interview → Student.officeId
+      offer: 'application',       // Offer → JobApplication → Student.officeId (nested)
       semesterPayment: 'application', // SemesterPayment → CollegeApplication.officeId
       employeeTarget: 'employee',     // EmployeeTarget → Employee.officeId
       incentiveCalculation: 'employee', // IncentiveCalculation → Employee.officeId
@@ -94,11 +96,19 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
     // For these, non-admins should only see their own office, filtered by `id` not `officeId`.
     const SELF_SCOPED_ENTITIES = new Set(['office']);
 
+    // Master data entities shared across ALL offices — not office-scoped.
+    // A company like TCS is the same regardless of which office is viewing it.
+    const NO_SCOPE_ENTITIES = new Set(['company', 'jobOpening', 'college', 'course', 'incentiveRule', 'setting']);
+
     // Build the office-scoped where clause
     function buildScopedWhere(): any {
       // Personal entities: scope to current user
       if (isPersonalEntity && !user.roles.includes('Super Admin')) {
         return { userId: user.id };
+      }
+      // Master data entities: no office scoping (shared across all offices)
+      if (NO_SCOPE_ENTITIES.has(entityName as string)) {
+        return {};
       }
       // Get the office scope (string or null for admins)
       const scope = officeScope(user);
@@ -115,6 +125,10 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       }
       // Filter through the relation
       const relationKey = RELATION_SCOPE[entityName as string];
+      // Special case: Offer → application → student → officeId (2-level nesting)
+      if (entityName === 'offer') {
+        return { application: { student: { officeId: scope } } };
+      }
       return { [relationKey]: { officeId: scope } };
     }
 
@@ -139,8 +153,8 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ entity: string
       }
       // Filter keys — but skip `officeId` for entities that use relation scoping
       const FILTER_KEYS = ['status','source','leadType','paymentStatus','paymentMode','gender','category','mode','result','priority','entityType','assignedToId','assignedEmployeeId','studentId','leadId','enrollmentId','batchId','courseId','collegeId','jobId','companyId','placementExecutiveId','employeeId','period','ruleType','basis','documentType','isRead','type','verificationDate'];
-      // Add officeId filter only for entities that have it directly (not self-scoped, not relation-scoped)
-      if (!RELATION_SCOPE[entityName as string] && !SELF_SCOPED_ENTITIES.has(entityName as string)) {
+      // Add officeId filter only for entities that have it directly (not self/relation/no-scope)
+      if (!RELATION_SCOPE[entityName as string] && !SELF_SCOPED_ENTITIES.has(entityName as string) && !NO_SCOPE_ENTITIES.has(entityName as string)) {
         FILTER_KEYS.push('officeId');
       }
       for (const key of FILTER_KEYS) {
