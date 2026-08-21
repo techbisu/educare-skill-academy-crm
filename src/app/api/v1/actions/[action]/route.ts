@@ -410,7 +410,8 @@ async function recomputeEnrollmentFinancials(enrollmentId: string) {
   if (!enr) return;
   const totalPaid = await db.payment.aggregate({ where: { enrollmentId, status: 'Valid' }, _sum: { amount: true } });
   const paid = totalPaid._sum.amount ?? 0;
-  const due = enr.finalFee - paid;
+  // Due should never be negative (overpayment is tracked in paidAmount but due clamped to 0)
+  const due = Math.max(0, enr.finalFee - paid);
   await db.enrollment.update({
     where: { id: enrollmentId },
     data: { paidAmount: paid, dueAmount: due, paymentStatus: due <= 0 ? 'Paid' : paid > 0 ? 'Partial' : 'Unpaid' },
