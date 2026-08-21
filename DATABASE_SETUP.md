@@ -93,24 +93,79 @@ bun run scripts/seed.ts
 
 ## 4. Production deployment (Vercel)
 
-1. Push your code to GitHub.
+### How auto-migration + seeding works on Vercel
+
+The project includes a custom build script (`scripts/vercel-build.sh`) that runs automatically on every Vercel build. Here's what it does:
+
+```
+[1/4] prisma generate         → Generates Prisma Client (needed for the app to compile)
+[2/4] prisma db push          → Creates/updates tables in your DB (idempotent — safe every build)
+[3/4] Check if DB is empty    → If no users AND no offices exist → run seeder (first-build only)
+[4/4] next build              → Builds the Next.js app
+```
+
+**Key safety features**:
+- **Migrations are idempotent** — `prisma db push` only creates missing tables or adds new columns. It never drops data.
+- **Seeder runs ONLY on first build** — it checks if the DB has any users/offices. If data exists, seeding is skipped. This prevents wiping production data on every deploy.
+- **If you re-deploy to a fresh DB** (e.g. you switched from Supabase to Neon), the seeder will automatically run again because the DB is empty.
+
+### Setup steps
+
+1. Push your code to GitHub (already done if you followed the README).
 2. Go to [vercel.com](https://vercel.com) → New Project → Import your repo.
-3. In **Environment Variables**, set the same values from your `.env` (Supabase or Neon connection string, `NEXTAUTH_SECRET`, `RESEND_API_KEY`, etc.).
-4. **Important**: Vercel needs `prisma generate` to run at build time. The `postinstall` script in `package.json` already does this automatically (via `prisma generate`).
-5. Deploy. Vercel will detect Next.js automatically.
+3. In **Environment Variables**, set these (copy from your `.env`):
+   - `DATABASE_URL` — your PostgreSQL connection string (Supabase pooled or Neon)
+   - `DIRECT_URL` — direct connection (Supabase only, for migrations)
+   - `NEXTAUTH_SECRET` — strong random string (`openssl rand -base64 32`)
+   - `NEXTAUTH_URL` — your Vercel URL (e.g. `https://your-app.vercel.app`)
+   - `CRON_SECRET` — strong random string for the EMI reminder cron
+   - Optional: `RESEND_API_KEY`, `SMS_*`, `WHATSAPP_*` for notifications
+4. **Important**: The `vercel.json` in this repo already configures:
+   - `installCommand`: `bun install --frozen-lockfile`
+   - `buildCommand`: `bash scripts/vercel-build.sh` (runs migrations + conditional seed + build)
+5. Click **Deploy**. The first build will:
+   - Install dependencies
+   - Run `postinstall` → `prisma generate`
+   - Run `scripts/vercel-build.sh` → push schema, seed (first time only), build
+6. Watch the build logs — you'll see the migration and seeding output.
+
+### After the first build
+
+Subsequent builds will:
+- Run `prisma generate` (fast — uses cache)
+- Run `prisma db push` (fast — no changes if schema unchanged)
+- **Skip seeding** (DB already has data)
+- Build the Next.js app
+
+### Manual seeding (if needed)
+
+If you want to re-seed without deploying:
+```bash
+# Install Vercel CLI
+bun add -g vercel
+
+# Link to your project
+vercel link
+
+# Pull env vars to local .env
+vercel env pull .env.production.local
+
+# Run the seeder against production DB
+DATABASE_URL="your-production-url" bun run scripts/seed.ts
+```
 
 ### Vercel Cron (for EMI reminders)
 
-Add to `vercel.json` (already provided in this repo):
+`vercel.json` includes a cron job that runs daily at 9 AM UTC:
 ```json
 {
   "crons": [
-    { "path": "/api/v1/cron/emi-reminders?secret=YOUR_CRON_SECRET", "schedule": "0 9 * * *" }
+    { "path": "/api/v1/cron/emi-reminders?secret=${CRON_SECRET}", "schedule": "0 9 * * *" }
   ]
 }
 ```
 
-This runs daily at 9 AM UTC, sending reminders for all EMIs due in the next 7 days or overdue.
+This sends reminders for all EMIs due in the next 7 days or overdue. The `${CRON_SECRET}` is automatically replaced by Vercel with your env var value.
 
 ## 5. Connection troubleshooting
 
